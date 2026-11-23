@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Minimal on purpose. No canRetrieveWindowContent: click, toast and window events already carry the
+  text/contentDescription we match on, and we never read screen content. notificationTimeout coalesces
+  bursts. The event types are further reduced to none at runtime while clipboard sharing is off or the
+  Mac is not connected (see ClipAccessibilityService.setActive).
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeViewClicked|typeViewLongClicked|typeNotificationStateChanged|typeWindowStateChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagDefault"
+    android:canRetrieveWindowContent="false"
+    android:notificationTimeout="100"
+    android:description="@string/a11y_description" />

@@ -1,0 +1,19 @@
+name: Bug report
+description: Something doesn't work
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes: { label: What happened, description: "What you did, what you expected, what you saw" }
+    validations: { required: true }
+  - type: input
+    id: phone
+    attributes: { label: Phone and Android version, placeholder: "OnePlus 13, Android 16" }
+    validations: { required: true }
+  - type: input
+    id: mac
+    attributes: { label: Mac and macOS version, placeholder: "MacBook Air M2, macOS 26" }
+    validations: { required: true }
+  - type: input
+    id: version
+    attributes: { label: Mydroid version (Mac and phone) }

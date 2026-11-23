@@ -1,0 +1,37 @@
+name: CI
+on:
+  push: { branches: [main] }
+  pull_request:
+
+jobs:
+  mac:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test
+        working-directory: mac
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew :protocol:test :simulator:test :app:testDebugUnitTest :app:assembleDebug
+        working-directory: android
+
+  extension:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: node test/background.test.js && node test/detector.test.js
+        working-directory: extension
+
+  install-script:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash -n install.sh && brew install shellcheck && shellcheck install.sh scripts/release/*.sh

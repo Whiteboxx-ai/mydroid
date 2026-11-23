@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Mydroid</string>
+    <string name="share_label">Send to Mac</string>
+    <string name="process_text_label">Send to Mac</string>
+    <string name="tile_label">Send clipboard</string>
+    <string name="tile_lock_label">Lock Mac</string>
+    <string name="a11y_label">Mydroid clipboard</string>
+    <string name="a11y_description">Notices when you tap Copy so the text can be pasted on your Mac. Mydroid never reads what is on your screen, only the button you tap and the text you copied.</string>
+</resources>
