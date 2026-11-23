@@ -21,3 +21,4 @@ input[type=checkbox]:disabled { opacity: .45; cursor: default; }
 code, kbd { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--row); padding: 1px 5px; border-radius: 5px; user-select: all; }
 ol { padding-left: 18px; margin: 6px 0; } li { margin: 4px 0; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+[hidden] { display: none !important; }

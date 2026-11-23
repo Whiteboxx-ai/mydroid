@@ -12,8 +12,11 @@ In the Mydroid phone app, open **Authenticator** and add accounts. To move them 
 ## Fill in the browser
 
 1. Install the **Mydroid Authenticator** extension in Chrome, Edge, Brave or Arc.
-2. On your Mac, open **Settings → Authenticator → Set up…** next to your browser.
-3. On a page that asks for a code, click the **Fill from phone** chip under the field and approve on your phone.
+2. On the welcome page that opens, click **Enable on all sites**, then **Allow** in Chrome's dialog. To pick sites instead, skip it and click **Enable on this site** in the toolbar button on each site.
+3. On your Mac, open **Settings → Authenticator → Set up…** next to your browser.
+4. On a page that asks for a code, click the **Fill from phone** chip under the field and approve on your phone.
+
+The extension can't see any page until you allow a site. It only looks for code fields. Turn access off any time on the extension's options page.
 
 The setup sheet shows **Ready** when the extension and the app are connected.
 

@@ -113,8 +113,53 @@ async function sayHello() {
   helloSent = !!(r && r.ok);          // if Mydroid wasn't reachable, the next request tries again
 }
 
-chrome.runtime.onInstalled.addListener(() => { sayHello(); });
-chrome.runtime.onStartup.addListener(() => { sayHello(); });
+// ---- Website access: the content script is registered only for the sites the user allowed
+
+const SCRIPT_ID = 'mydroid-fill';
+const SCRIPT_FILES = ['detector.js', 'content.js'];
+const OUR_ORIGIN = /^https:\/\/|^http:\/\/(localhost|127\.0\.0\.1)\//;
+
+/** Makes the registered content script match exactly the origins that are granted (none: unregistered). */
+async function syncScripts() {
+  if (!chrome.permissions || !chrome.scripting) return;
+  try {
+    const origins = ((await chrome.permissions.getAll()).origins || []).filter((o) => OUR_ORIGIN.test(o));
+    const existing = await chrome.scripting.getRegisteredContentScripts({ ids: [SCRIPT_ID] });
+    if (!origins.length) {
+      if (existing.length) await chrome.scripting.unregisterContentScripts({ ids: [SCRIPT_ID] });
+      return;
+    }
+    const script = { id: SCRIPT_ID, matches: origins, js: SCRIPT_FILES, allFrames: true, runAt: 'document_idle', persistAcrossSessions: true };
+    if (existing.length) await chrome.scripting.updateContentScripts([script]);
+    else await chrome.scripting.registerContentScripts([script]);
+  } catch (e) { /* tried again on the next start or grant */ }
+}
+
+/** A registered script only runs on pages loaded afterwards, so start it in the tab the user is looking at right now. */
+async function startInActiveTab() {
+  if (!chrome.tabs || !chrome.tabs.query || !chrome.scripting) return;
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (!tab || tab.id == null || !tab.url) return;
+    if (!(await chrome.permissions.contains({ origins: [new URL(tab.url).origin + '/*'] }))) return;
+    await chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, files: SCRIPT_FILES });
+  } catch (e) { /* not a page we may touch */ }
+}
+
+if (chrome.permissions && chrome.permissions.onAdded) {
+  chrome.permissions.onAdded.addListener(() => { syncScripts().then(startInActiveTab); });
+  chrome.permissions.onRemoved.addListener(() => { syncScripts(); });
+}
+
+chrome.runtime.onInstalled.addListener((details) => {
+  sayHello();
+  syncScripts();
+  // First install: one welcome page with the Enable button (the request needs a click, so it can't be made from here).
+  if (details && details.reason === 'install' && chrome.tabs && chrome.tabs.create) {
+    try { chrome.tabs.create({ url: chrome.runtime.getURL('welcome.html') }); } catch (e) { /* ignore */ }
+  }
+});
+chrome.runtime.onStartup.addListener(() => { sayHello(); syncScripts(); });
 
 // ---- Requests from pages and from the popup
 

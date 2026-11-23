@@ -32,6 +32,14 @@ By hand: build Mydroid (`mac/scripts/build-app.sh`), open it, run **Set up…** 
 **For real users** the one-click path is publishing this extension to the **Chrome Web Store** (and **Edge Add-ons**): Chrome blocks self-hosted installs on macOS. The fixed ID below keeps the native messaging manifest valid
 for a store build. Until that exists, the guided Load-unpacked flow is what we have.
 
+## Website access
+
+The manifest declares no website access, so installing the extension reads no pages. The first install opens `welcome.html` with an **Enable on all sites** button;
+the toolbar popup offers **Enable on this site** and **All sites**, and the options page shows what is on and can turn it off. Each button calls
+`chrome.permissions.request` straight from its click (`access.js`), as Chrome requires. The background worker watches `permissions.onAdded` and `onRemoved` and registers
+the content script (`chrome.scripting.registerContentScripts`) for exactly the granted sites, then starts it in the tab the user is on. Until a site is allowed, the
+**⌃⌥C** shortcut in Mydroid for Mac still fills codes anywhere.
+
 ## What you see
 
 - On a page asking for a code (`autocomplete="one-time-code"`, OTP-named inputs, split digit boxes, or page text such as "enter the verification code"), a compact
@@ -72,6 +80,7 @@ and sent with the request so the phone can pick the right account.
 
 ```sh
 node test/background.test.js        # 5 checks: hello on install and on startup, nothing else in it, a missing host never throws
+node test/access.test.js            # 6 checks: no up-front host access, the welcome page on first install, the script follows the granted sites
 node test/detector.test.js          # 16 checks: single input, split boxes, a Salesforce-like page, non-OTP numeric fields that must not trigger
 node test/e2e.mjs                   # needs Node 22+ and a Chromium browser; add --shots <dir> to save a PNG per chip state (light and dark)
 ```

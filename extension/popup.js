@@ -27,9 +27,19 @@ async function currentHost() {
 (async function main() {
   $('options').addEventListener('click', () => chrome.runtime.openOptionsPage());
   const host = await currentHost();
+  const access = await MydroidAccess.state(host);
+  if (!access.here) {
+    // The permission requests must be the first thing the click does, so they are not awaited behind anything.
+    $('enable').hidden = false;
+    $('enabletext').textContent = host ? 'The fill button is off on this site.' : 'The fill button is off.';
+    $('enablehere').hidden = !host;
+    $('enablehere').addEventListener('click', () => { MydroidAccess.enableHere(host).then((ok) => { if (ok) window.close(); }); });
+    $('enableall').textContent = host ? 'All sites' : 'Enable on all sites';
+    $('enableall').addEventListener('click', () => { MydroidAccess.enableAll().then((ok) => { if (ok) window.close(); }); });
+  }
   const res = await chrome.runtime.sendMessage({ op: 'popup-status', host });
   show(res.state);
-  if (host && res.state === 'connected') {
+  if (host && access.here && res.state === 'connected') {
     $('autorow').hidden = false;
     $('autohost').textContent = res.domain || host;
     $('auto').checked = !!res.autofill;
