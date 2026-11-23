@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mydroid</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="ui.css">
+<style>body { width: 320px; }</style>
+</head>
+<body>
+<main>
+  <h1>Mydroid Authenticator</h1>
+  <div class="status" role="status" aria-live="polite"><span class="dot" id="dot"></span><span id="status">Checking…</span></div>
+  <label class="toggle" id="autorow" hidden>
+    <span><span id="autotitle">Fill automatically on this site</span><br><span class="mute" id="autohost"></span></span>
+    <input type="checkbox" id="auto" aria-labelledby="autotitle">
+  </label>
+  <p class="mute" id="hint"></p>
+  <p><button class="plain" id="options" type="button">Setup and help</button></p>
+</main>
+<script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mydroid Authenticator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="ui.css">
+<style>main { max-width: 480px; margin: 0 auto; padding: 28px 20px 40px; } h1 { font-size: 20px; } details { margin-top: 8px; } summary { cursor: pointer; color: var(--mute); }</style>
+</head>
+<body>
+<main>
+  <h1>Mydroid Authenticator</h1>
+  <div class="mute">Fill 2FA codes from your Android phone.</div>
+
+  <div class="status" role="status" aria-live="polite"><span class="dot" id="dot"></span><span id="status">Checking…</span></div>
+  <p class="mute" id="hint"></p>
+  <p><button id="test" type="button">Check connection</button></p>
+
+  <h2>How it works</h2>
+  <ol>
+    <li>Click <b>Fill from phone</b> next to a code field.</li>
+    <li>Approve on your phone.</li>
+    <li>New site? <b>Link…</b> it to an account. Lookalike sites get a warning.</li>
+  </ol>
+
+  <h2>Set up</h2>
+  <p>Mydroid › Settings › Authenticator › <b>Set Up</b></p>
+
+  <h2>Privacy</h2>
+  <p>Secrets never leave your phone. Nothing is sent to a server or logged.</p>
+  <details>
+    <summary>Details</summary>
+    <p class="mute">The extension sends only the site you are on and, when your phone needs it, the username you typed earlier in the same tab (kept in memory for that tab).</p>
+    <p class="mute">Extension ID: <code id="extid"></code></p>
+  </details>
+</main>
+<script src="options.js"></script>
+</body>
+</html>

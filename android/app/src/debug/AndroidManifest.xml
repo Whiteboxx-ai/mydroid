@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- Debug builds only: exercises the accessibility clipboard path with a copy button and an IME check. -->
+        <activity
+            android:name="com.mydroid.android.debug.ClipTestActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.Mydroid" />
+        <activity
+            android:name="com.mydroid.android.debug.OpenTestActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+        <receiver android:name="com.mydroid.android.debug.DebugReceiver" android:exported="true" />
+    </application>
+</manifest>

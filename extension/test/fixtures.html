@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mydroid extension fixtures</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { font: 15px/1.5 -apple-system, system-ui, sans-serif; margin: 0; background: #f6f7f9; color: #1d1d1f; }
+  .page { max-width: 420px; margin: 40px auto; padding: 24px; background: #fff; border-radius: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+  h1 { font-size: 20px; margin: 0 0 6px; } p { color: #555; margin: 0 0 16px; }
+  input { font: inherit; padding: 10px 12px; border: 1px solid #c7c9cf; border-radius: 8px; width: 100%; box-sizing: border-box; }
+  .split { display: flex; gap: 8px; } .split input { width: 46px; text-align: center; padding: 10px 0; font-size: 20px; }
+  button.submit { margin-top: 16px; padding: 10px 14px; border: 0; border-radius: 8px; background: #0b57d0; color: #fff; font: inherit; }
+  @media (prefers-color-scheme: dark) { body { background: #17181a; color: #eee; } .page { background: #222326; } p { color: #aaa; } input { background: #2c2d31; color: #eee; border-color: #444; } }
+</style>
+</head>
+<body>
+<!--
+  Manual harness: open this file in a browser (file:// works) to see detection on synthetic login pages. By default it
+  stubs chrome.runtime so no extension or Mydroid is needed; ?page=single|split|salesforce|phone picks the page.
+  test/e2e.mjs drives it in a headless browser with a throwaway profile.
+-->
+<div class="page" id="root"></div>
+<script>
+  // Test-only shims: let the harness read the closed shadow root, and answer the background worker's messages.
+  window.__roots = [];
+  const realAttach = Element.prototype.attachShadow;
+  Element.prototype.attachShadow = function (init) { const r = realAttach.call(this, Object.assign({}, init, { mode: 'open' })); window.__roots.push(r); return r; };
+  window.__sent = [];
+  window.__stub = (msg) => ({ ok: false, error: 'no_app' });
+  window.chrome = { runtime: { id: 'fixture', lastError: null, sendMessage(msg, cb) { window.__sent.push(msg); setTimeout(() => cb(window.__stub(msg)), 30); }, openOptionsPage() {} } };
+
+  const page = new URLSearchParams(location.search).get('page') || 'single';
+  const root = document.getElementById('root');
+  const pages = {
+    single: `<h1>Two-factor authentication</h1><p>Enter the 6-digit code from your authenticator app.</p>
+      <form><input id="otp" name="otp" inputmode="numeric" maxlength="6" autocomplete="one-time-code" aria-label="Verification code"><button class="submit" type="button">Verify</button></form>`,
+    split: `<h1>Check your phone</h1><p>We sent you a verification code.</p>
+      <div class="split">${'<input inputmode="numeric" maxlength="1" aria-label="digit">'.repeat(6)}</div><button class="submit" type="button">Continue</button>`,
+    salesforce: `<h1>Verify Your Identity</h1><p>We sent a verification code to your email. Enter the code below.</p>
+      <form><label for="emc">Verification Code</label><input id="emc" name="emc" type="text" placeholder="Verification Code" autocomplete="off"><button class="submit" type="button">Verify</button></form>`,
+    phone: `<h1>Contact details</h1><p>Where can we reach you?</p>
+      <form><input name="phone" type="tel" inputmode="numeric" maxlength="10" placeholder="Phone"><br><br><input name="zip" inputmode="numeric" maxlength="5" placeholder="ZIP code"></form>`,
+  };
+  root.innerHTML = pages[page] || pages.single;
+</script>
+<script src="../detector.js"></script>
+<script src="../content.js"></script>
+</body>
+</html>
