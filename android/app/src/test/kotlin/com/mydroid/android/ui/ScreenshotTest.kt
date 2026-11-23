@@ -25,7 +25,13 @@ import com.mydroid.android.mac.MacUi
 import com.mydroid.android.presence.PresenceStatus
 import com.mydroid.android.remote.RemoteApi
 import com.mydroid.android.walkaway.WalkAwayStatus
+import com.mydroid.android.mac.AppsUi
+import com.mydroid.protocol.FsEntry
+import com.mydroid.protocol.FsHit
+import com.mydroid.protocol.MacApp
+import com.mydroid.protocol.MacMediaState
 import com.mydroid.protocol.MacStatus
+import com.mydroid.protocol.PresentInfo
 import com.mydroid.protocol.Presenting
 import com.mydroid.protocol.RemoteState
 import com.mydroid.android.transfers.*
@@ -177,31 +183,80 @@ class ScreenshotTest(private val dark: Boolean) {
 
     private val timerStart = now - (12 * 60 + 34) * 1000L
 
-    private fun remote(mode: RemoteMode, mac: MacUi = macUi, s: UiState = connected().copy(mac = mac)) =
-        @Composable { RemoteScreen(s, object : RemoteApi by RemoteApi.None { override val laserPreview = true }, mode, {}, {}, timerStart, {}, now) }
+    private fun remote(tab: RemoteTab, mac: MacUi = macUi, s: UiState = connected().copy(mac = mac), hits: List<FsHit>? = null) =
+        @Composable { RemoteScreen(s, object : RemoteApi by RemoteApi.None { override val laserPreview = true }, tab, {}, {}, timerStart, {}, now, hits) }
 
-    @Test fun remoteTrackpad() = both("remote-trackpad") { remote(RemoteMode.Trackpad)() }
+    private fun hit(name: String, path: String, ageDays: Int) = FsHit("docs", path, FsEntry(name, false, 1000, now - ageDays * 86_400_000L, "application/octet-stream"))
+    private val sampleHits = listOf(
+        hit("Q3 Review.key", "Work/Q3 Review.key", 0), hit("Product Launch.pptx", "Downloads/Product Launch.pptx", 1), hit("Team Offsite.key", "Documents/Team Offsite.key", 3),
+        hit("Investor Update.pdf", "Documents/Investor Update.pdf", 11), hit("Flight itinerary.pdf", "Downloads/Flight itinerary.pdf", 0), hit("Screenshot 9.41.png", "Desktop/Screenshot 9.41.png", 1),
+    )
+    private fun app(id: String, name: String) = MacApp(id, name)
 
-    @Test fun remotePresenter() = both("remote-presenter") {
-        remote(RemoteMode.Presenter, macUi.copy(remote = RemoteState(true, Presenting("Keynote"))))()
+    /** A cover with a few clear colours, as PNG bytes, so the wash has something to pick from. */
+    private fun sampleCover(): ByteArray {
+        val bmp = android.graphics.Bitmap.createBitmap(120, 120, android.graphics.Bitmap.Config.ARGB_8888)
+        val c = android.graphics.Canvas(bmp)
+        val p = android.graphics.Paint()
+        p.color = 0xFF3A2D7C.toInt(); c.drawRect(0f, 0f, 120f, 120f, p)
+        p.color = 0xFFC4577F.toInt(); c.drawCircle(40f, 46f, 52f, p)
+        p.color = 0xFF31748F.toInt(); c.drawCircle(88f, 90f, 40f, p)
+        p.color = 0xFFF6C177.toInt(); c.drawCircle(34f, 34f, 14f, p)
+        val out = java.io.ByteArrayOutputStream()
+        bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
+        return out.toByteArray()
     }
 
-    @Test fun remoteMedia() = both("remote-media") { remote(RemoteMode.Media)() }
+    @Test fun remoteTrackpad() = both("remote-trackpad") { remote(RemoteTab.Pad)() }
+
+    @Test fun remotePresentStart() = both("remote-present-start") { remote(RemoteTab.Present, hits = sampleHits)() }
+
+    @Test fun remotePresentLive() = both("remote-present-live") {
+        remote(RemoteTab.Present, macUi.copy(
+            remote = RemoteState(true, Presenting("Keynote")),
+            present = PresentInfo(true, "Keynote", 7, 24, "Pause here and let the chart land. Then walk left to right, ending on the dark bar. Ask if anyone wants the breakdown before moving on.", "Revenue by region"),
+        ))()
+    }
+
+    @Test fun remotePresentLiveNeedsAutomation() = both("remote-present-live-automation") {
+        remote(RemoteTab.Present, macUi.copy(remote = RemoteState(true, Presenting("Keynote")), present = PresentInfo(true, "Keynote", error = "automation")))()
+    }
+
+    @Test fun remotePlaying() = both("remote-playing") {
+        remote(RemoteTab.Playing, macUi.copy(media = MacMediaState(true, "Music", "Slow Tide", "Northern Lights", "Blue Hour", true, 102_000, 238_000, now, true, sampleCover(), 0.58)))()
+    }
+
+    @Test fun remotePlayingNothing() = both("remote-playing-empty") { remote(RemoteTab.Playing, macUi.copy(media = MacMediaState(active = false, volume = 0.4)))() }
+
+    @Test fun remotePlayingNeedsAutomation() = both("remote-playing-automation") { remote(RemoteTab.Playing, macUi.copy(media = MacMediaState(active = false, error = "automation")))() }
+
+    @Test fun remoteOpen() = both("remote-open") {
+        remote(RemoteTab.Open, macUi.copy(apps = AppsUi(
+            running = listOf(app("com.apple.Keynote", "Keynote"), app("com.apple.Safari", "Safari"), app("com.apple.Music", "Music"), app("com.apple.finder", "Finder"), app("com.apple.Terminal", "Terminal")),
+            installed = emptyList(),
+        )), hits = sampleHits)()
+    }
+
+    @Test fun remotePresenter() = both("remote-presenter") {
+        remote(RemoteTab.Present, macUi.copy(remote = RemoteState(true, Presenting("Keynote"))))()
+    }
+
+    @Test fun remoteMedia() = both("remote-media") { remote(RemoteTab.Playing)() }
 
     @Test fun remoteNeedsAccessibility() = both("remote-needs-accessibility") {
-        remote(RemoteMode.Trackpad, macUi.copy(remote = RemoteState(accessibility = false, presenting = null)))()
+        remote(RemoteTab.Pad, macUi.copy(remote = RemoteState(accessibility = false, presenting = null)))()
     }
 
     @Test fun remoteNeedsAccessibilityPresenter() = both("remote-needs-accessibility-presenter") {
-        remote(RemoteMode.Presenter, macUi.copy(remote = RemoteState(accessibility = false, presenting = null)))()
+        remote(RemoteTab.Present, macUi.copy(remote = RemoteState(accessibility = false, presenting = null)))()
     }
 
     @Test fun remoteMacAway() = both("remote-mac-away") {
-        remote(RemoteMode.Media, MacUi(), connected().copy(link = Link.Searching))()
+        remote(RemoteTab.Playing, MacUi(), connected().copy(link = Link.Searching))()
     }
 
     @Test fun remotePresenterLargeFont() = both("remote-presenter-fontscale1.3", heightDp = 740, fontScale = 1.3f) {
-        remote(RemoteMode.Presenter, macUi.copy(remote = RemoteState(true, Presenting("Keynote"))))()
+        remote(RemoteTab.Present, macUi.copy(remote = RemoteState(true, Presenting("Keynote"))))()
     }
 
     // ---------------------------------------------------------------- text sheet

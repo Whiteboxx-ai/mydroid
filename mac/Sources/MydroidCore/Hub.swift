@@ -123,6 +123,12 @@ public final class Hub: ServerDelegate {
     public var onRemoteInput: ((RemoteInput) -> Void)?
     /// Runs `mac.action` and `mac.shortcuts.get`. Without one the Hub answers "unsupported".
     public var macActions: MacActionPerforming?
+    /// Apps, opening files, presenting and the Mac's own media (PROTOCOL.md 16). Without one the Hub answers "unsupported".
+    public var macRemote: MacRemoteHandling?
+    var presentWatching = false
+    var mediaWatching = false
+    var presentSent: PresentState?
+    var mediaSent: MacMedia?
     var remoteSent: RemoteStatus?
     var macStatusSent: MacStatus?
     /// The app has told the Hub its Remote state. Until then (the headless test server never does) no `remote.state` goes out.
@@ -451,6 +457,7 @@ public final class Hub: ServerDelegate {
         smsThreadRequests.removeAll()
         photoRequests.removeAll()
         remoteSent = nil; macStatusSent = nil
+        stopRemoteV2Watching()
         fileShare.connectionClosed()
         fsPutDirectories.removeAll()
         emit(.sessionClosed)
@@ -577,6 +584,8 @@ public final class Hub: ServerDelegate {
         case "auth.code", "auth.list", "auth.import.result": auth.handle(m)
         case "mac.action": handleMacAction(m, from: peer)
         case "mac.shortcuts.get": handleShortcutsGet(m, from: peer)
+        case "mac.apps.get", "mac.launch", "mac.open", "present.start", "present.watch", "mac.media.watch", "mac.media.cmd":
+            handleRemoteV2(m, from: peer)
         case _ where FileShareService.handles(m.type):
             fileShare.handle(m)
         default:

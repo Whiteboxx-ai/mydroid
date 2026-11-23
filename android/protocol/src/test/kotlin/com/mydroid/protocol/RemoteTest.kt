@@ -147,4 +147,106 @@ class RemoteTest {
         i.key("nonsense"); i.media("explode"); i.media("mute")
         assertEquals(1, s.m.size); assertEquals("mute", s.m[0].str("action"))
     }
+
+    @Test fun anyModifierCanBeArmedForTheNextKey() {
+        val sent = ArrayList<Message>()
+        val i = RemoteInput { sent += it }
+        i.toggle("option"); i.toggle("ctrl")
+        assertEquals(setOf("option", "ctrl"), i.armed)
+        i.key("left")
+        assertEquals(setOf<String>(), i.armed)
+        val mods = (sent.single().header["mods"] as kotlinx.serialization.json.JsonArray).map { (it as kotlinx.serialization.json.JsonPrimitive).content }
+        assertEquals(listOf("option", "ctrl"), mods)
+    }
+
+    @Test fun typedTextIsMirroredUntilEnter() {
+        val i = RemoteInput { }
+        val seen = ArrayList<String>()
+        i.onTyped { seen += it }
+        i.ops(listOf(KeyOp.Text("quarterly"), KeyOp.Text(" plan")))
+        assertEquals("quarterly plan", i.typed)
+        i.ops(listOf(KeyOp.Backspace))
+        assertEquals("quarterly pla", i.typed)
+        i.ops(listOf(KeyOp.Enter))
+        assertEquals("", i.typed)
+        assertEquals("", seen.last())
+    }
+
+    // ---------------------------------------------------------------- PROTOCOL.md 16
+
+    @Test fun appsListParsesIconsAndSkipsDamagedEntries() {
+        val png = java.util.Base64.getEncoder().encodeToString(byteArrayOf(1, 2, 3))
+        val m = Message.of("mac.apps") {
+            put("req", "r1")
+            put("running", kotlinx.serialization.json.buildJsonArray {
+                add(kotlinx.serialization.json.buildJsonObject { put("id", "com.apple.Safari"); put("name", "Safari"); put("icon", png) })
+                add(kotlinx.serialization.json.buildJsonObject { put("name", "no id") })
+            })
+            put("apps", kotlinx.serialization.json.buildJsonArray { add(kotlinx.serialization.json.buildJsonObject { put("id", "com.apple.Notes"); put("name", "Notes") }) })
+        }
+        val l = RemoteWire.parseApps(m)!!
+        assertEquals("r1", l.req)
+        assertEquals(listOf("Safari"), l.running.map { it.name })
+        assertArrayEquals(byteArrayOf(1, 2, 3), l.running.single().icon)
+        assertEquals(listOf("Notes"), l.installed.map { it.name })
+        assertNull(l.installed.single().icon)
+        assertNull(RemoteWire.parseApps(Message.of("mac.apps")))
+    }
+
+    @Test fun presentStateParsesWhatTheAppCouldReport() {
+        val full = RemoteWire.parsePresent(Message.of("present.state") { put("active", true); put("app", "Keynote"); put("index", 7); put("count", 24); put("notes", "Pause"); put("title", "Results") })
+        assertEquals(PresentInfo(true, "Keynote", 7, 24, "Pause", "Results"), full)
+        val partial = RemoteWire.parsePresent(Message.of("present.state") { put("active", true); put("app", "Keynote"); put("error", "automation") })
+        assertEquals("automation", partial.error); assertNull(partial.index)
+        assertFalse(RemoteWire.parsePresent(Message.of("present.state") { put("active", false) }).active)
+        assertNull(RemoteWire.parsePresent(Message.of("present.state") { put("active", true); put("index", 0) }).index)
+    }
+
+    @Test fun macMediaExtrapolatesWhilePlayingAndStopsAtTheEnd() {
+        val playing = MacMediaState(true, "Music", "t", "a", "b", playing = true, position = 10_000, duration = 200_000, ts = 1_000_000)
+        assertEquals(15_000L, playing.positionAt(1_005_000))
+        assertEquals(200_000L, playing.positionAt(9_000_000))
+        assertEquals("a clock that is a little behind never goes backwards past the sample", 10_000L, playing.positionAt(900_000))
+        val paused = MacMediaState(true, "Music", "t", "a", "b", playing = false, position = 10_000, duration = 200_000, ts = 1_000_000)
+        assertEquals(10_000L, paused.positionAt(1_050_000))
+    }
+
+    @Test fun aNewerStateWithoutArtKeepsTheCoverOfTheSameTrackOnly() {
+        val cover = byteArrayOf(9)
+        val first = MacMediaState(true, "Music", "t", "a", "b", art = cover)
+        val same = MacMediaState(true, "Music", "t", "a", "b", playing = true).withArtFrom(first)
+        assertArrayEquals(cover, same.art)
+        val other = MacMediaState(true, "Music", "t2", "a", "b").withArtFrom(first)
+        assertNull(other.art)
+        assertNull(MacMediaState(active = false).withArtFrom(first).art)
+    }
+
+    @Test fun macMediaParsesAndSurvivesBadBase64() {
+        val art = java.util.Base64.getEncoder().encodeToString(byteArrayOf(5, 6))
+        val m = RemoteWire.parseMacMedia(Message.of("mac.media") {
+            put("active", true); put("app", "Spotify"); put("title", "T"); put("artist", "A"); put("album", "B"); put("playing", true)
+            put("position", 1234L); put("duration", 200000L); put("ts", 1_795_000_000_000L); put("canSeek", true); put("art", art); put("volume", 0.4)
+        })
+        assertTrue(m.active); assertEquals("Spotify", m.app); assertEquals(1_795_000_000_000L, m.ts)
+        assertArrayEquals(byteArrayOf(5, 6), m.art); assertEquals(0.4, m.volume!!, 1e-9)
+        assertNull(RemoteWire.parseMacMedia(Message.of("mac.media") { put("active", true); put("art", "!!!") }).art)
+        val idle = RemoteWire.parseMacMedia(Message.of("mac.media") { put("active", false); put("volume", 7.0); put("error", "automation") })
+        assertFalse(idle.active); assertEquals(1.0, idle.volume!!, 1e-9); assertEquals("automation", idle.error)
+    }
+
+    @Test fun v2RequestsCarryTheirFields() {
+        assertEquals("mac.launch", RemoteWire.launch("r", "com.apple.Notes").type)
+        val p = RemoteWire.presentStart("r", "docs", "Work/Q3.key", true)
+        assertEquals("Work/Q3.key", p.str("path")); assertEquals(true, p.bool("play"))
+        assertEquals(61_500L, RemoteWire.mediaSeek(61_500).long("position"))
+        assertEquals(0L, RemoteWire.mediaSeek(-5).long("position"))
+        assertEquals("1.0", RemoteWire.mediaVolume(3.0).header["value"].toString())
+        assertEquals(false, RemoteWire.presentWatch(false).bool("on"))
+    }
+
+    @Test fun decksAreRecognisedByExtension() {
+        assertTrue(Decks.isDeck("Q3 Review.key")); assertTrue(Decks.isDeck("a.PPTX")); assertTrue(Decks.isDeck("x.pdf"))
+        assertFalse(Decks.isDeck("notes.txt")); assertFalse(Decks.isDeck("keynote"))
+        assertEquals("Keynote", Decks.kind("a.key")); assertEquals("Q3 Review", Decks.title("Q3 Review.key"))
+    }
 }

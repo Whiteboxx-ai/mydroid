@@ -235,6 +235,12 @@ final class AppModel {
         // The phone must hear what the Mac remembers (settings.callAudio), e.g. after a reset of the Hub's saved settings.
         if callAudio.enabled != state.settings.callAudio { updateSettings { $0.callAudio = callAudio.enabled } }
         hub.macActions = actions
+        let workspace = AppKitWorkspace()
+        let scripts = OsascriptRunner()
+        hub.macRemote = MacRemoteService(
+            workspace: workspace,
+            present: PresentService(workspace: workspace, scripts: scripts, poster: CGEventPoster(), publish: { [weak hub] in hub?.setPresentState($0) }),
+            media: MediaService(workspace: workspace, scripts: scripts, artwork: AppKitArtwork(), publish: { [weak hub] in hub?.setMacMedia($0) }))
         remote.start(hub: hub)
         status.onChange = { [weak self] in self?.hub.setMacStatus($0) }
         status.start()

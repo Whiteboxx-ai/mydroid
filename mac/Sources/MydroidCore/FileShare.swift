@@ -355,6 +355,15 @@ public final class FileShareService {
         }
     }
 
+    /// A file or folder the phone asked to open, inside the shared roots and nowhere else (the same rules as `fs.get`).
+    public func resolveForOpen(root: String?, path: String?, regularFileOnly: Bool) throws -> URL {
+        guard config.enabled else { throw FileShareError.off }
+        guard let root, let r = config.roots.first(where: { $0.id == root }), let sp = SharePath(root: r.url) else { throw FileShareError.notFound }
+        let url = try sp.resolve(path ?? "")
+        if regularFileOnly && !isRegularFile(url) { throw FileShareError.notFound }
+        return url
+    }
+
     private func isRegularFile(_ url: URL) -> Bool {
         (try? url.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true
     }

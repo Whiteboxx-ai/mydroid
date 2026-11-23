@@ -1,3 +1,3 @@
-:root { --sl-color-accent-low: #0c4a6e; --sl-color-accent: #0284c7; --sl-color-accent-high: #bae6fd; }
-:root[data-theme='light'] { --sl-color-accent-low: #bae6fd; --sl-color-accent: #0369a1; --sl-color-accent-high: #0c4a6e; }
+:root { --sl-color-accent-low: #2A1B7A; --sl-color-accent: #6C4DFF; --sl-color-accent-high: #D9D0FF; }
+:root[data-theme='light'] { --sl-color-accent-low: #D9D0FF; --sl-color-accent: #5233E0; --sl-color-accent-high: #2A1B7A; }
 pre { font-size: 0.95rem; }

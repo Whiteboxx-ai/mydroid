@@ -55,7 +55,7 @@ fun MydroidApp(s: UiState, a: Actions) {
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
     var remoteOpen by rememberSaveable { mutableStateOf(false) }
     var authOpen by rememberSaveable { mutableStateOf(false) }
-    var remoteMode by rememberSaveable { mutableStateOf(RemoteMode.Trackpad.name) }
+    var remoteTab by rememberSaveable { mutableStateOf(RemoteTab.Pad.name) }
     var timerStart by rememberSaveable { mutableLongStateOf(0L) }
     val now = rememberNow()
     val ready = s.link != Link.Confirm && s.link != Link.Unpaired && s.link != Link.Connecting && s.setupDone
@@ -65,7 +65,7 @@ fun MydroidApp(s: UiState, a: Actions) {
     LaunchedEffect(s.openRemote, ready) {
         val want = s.openRemote ?: return@LaunchedEffect
         if (!ready) return@LaunchedEffect
-        RemoteMode.entries.firstOrNull { it.name.equals(want, ignoreCase = true) }?.let { remoteMode = it.name }
+        RemoteTab.fromName(want)?.let { remoteTab = it.name }
         if (timerStart == 0L) timerStart = System.currentTimeMillis()
         settingsOpen = false; remoteOpen = true
         a.consumeOpenRemote()
@@ -100,10 +100,10 @@ fun MydroidApp(s: UiState, a: Actions) {
                 Screen.Permissions -> PermissionsScreen(s, a)
                 Screen.Home -> HomeScreen(s, a, now, onSettings = { settingsOpen = true }, onRemote = { remoteOpen = true }, onAuth = { authOpen = true })
                 Screen.Remote -> {
-                    val mode = RemoteMode.entries.firstOrNull { it.name == remoteMode } ?: RemoteMode.Trackpad
+                    val tab = RemoteTab.entries.firstOrNull { it.name == remoteTab } ?: RemoteTab.Pad
                     RemoteScreen(
-                        s, a.remote, mode,
-                        onMode = { remoteMode = it.name; if (it == RemoteMode.Presenter && timerStart == 0L) timerStart = System.currentTimeMillis() },
+                        s, a.remote, tab,
+                        onTab = { remoteTab = it.name; if (it == RemoteTab.Present && timerStart == 0L) timerStart = System.currentTimeMillis() },
                         onBack = { remoteOpen = false },
                         timerStart = timerStart.takeIf { it > 0 } ?: now, onTimerReset = { timerStart = System.currentTimeMillis() },
                     )

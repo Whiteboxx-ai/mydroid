@@ -21,6 +21,19 @@ interface RemoteApi {
     /** While [handler] is set (Presenter mode on screen) the volume buttons call it: `true` for volume up. */
     fun volumeKeys(handler: ((up: Boolean) -> Unit)?)
 
+    // PROTOCOL.md 16. Defaults do nothing, so previews and tests need no Mac.
+    fun loadApps() {}
+    fun launchApp(app: com.mydroid.protocol.MacApp) {}
+    fun openFile(hit: com.mydroid.protocol.FsHit) {}
+    fun startPresentation(hit: com.mydroid.protocol.FsHit, play: Boolean) {}
+    fun watchPresent(on: Boolean) {}
+    fun watchMedia(on: Boolean) {}
+    fun mediaCommand(m: Message) {}
+    /** Opens a link in the Mac's browser (a slides link, for instance). */
+    fun openLink(url: String) {}
+    /** Recent files (empty [query]) or a search of the Mac's shared folders. Blocks: call it off the main thread. Null when the Mac can't say. */
+    fun findFiles(query: String): List<com.mydroid.protocol.FsHit>? = null
+
     /** Tests and previews only: pretend the laser sensor is (not) there. Null means ask the real sensor. */
     val laserPreview: Boolean? get() = null
 

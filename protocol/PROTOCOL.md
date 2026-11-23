@@ -466,3 +466,39 @@ Google Authenticator's export shows QR codes on the phone and blocks screenshots
   - **Otherwise:** open `https://open.spotify.com/track/<id>` (or `/episode/<id>`).
   - **Then:** send `media.cmd {action:"pause"}` to the phone, unless the user turned off "Pause my phone when continuing on Mac" (default on).
 - **Without a `mediaId`:** the row offers **Search on web**, a web search for "<title> <artist>".
+
+## 16. Remote, rethought: apps, opening files, presenting, Mac media (v1.10)
+
+Four additions to Remote (section 10). All of them are phone-to-Mac requests over the normal session; nothing here is sent until the phone asks.
+
+### 16.1 Apps and opening files
+
+| type | dir | fields |
+|---|---|---|
+| `mac.apps.get` | P→M | `req` |
+| `mac.apps` | M→P | `req`, `running`: `[{id, name, icon?}]` (at most 16, most recently used first; `icon` is a base64 PNG of about 96 px), `apps`: `[{id, name}]` (installed apps, at most 300, from `/Applications`, `/System/Applications` and `~/Applications`, top level only). `id` is the bundle identifier. |
+| `mac.launch` | P→M | `req`, `id`. Activates the app if it is running, else launches it. |
+| `mac.open` | P→M | `req`, `root`, `path`. Opens the file with its default app. The path is resolved and confined exactly like `fs.get` (section 9), so only files in the folders the user shares can be opened. |
+| `mac.result` | M→P | `req`, `ok`, `error?` (section 11). The answer to `mac.launch`, `mac.open` and `present.start`. |
+
+### 16.2 Presenting
+
+| type | dir | fields |
+|---|---|---|
+| `present.start` | P→M | `req`, `root`, `path`, `play` bool. Opens the file (confined like `mac.open`). With `play`, the Mac waits up to 10 s for the app to show the document, then starts the slideshow: Keynote `start`, PowerPoint ⇧⌘↩, Preview ⇧⌘F, Keynote and PowerPoint through the keyboard when scripting is not allowed. Answered with `mac.result`. |
+| `present.watch` | P→M | `on` bool. While on, the Mac sends `present.state` on change (it may poll the app at most once a second). The phone turns it off when the Present screen closes. |
+| `present.state` | M→P | `active` bool. When true: `app`, `index` (1-based slide), `count`, `notes` (presenter notes of the current slide, at most 4 KB, optional), `title` (optional). Fields the app can't report are left out. |
+
+`remote.state.presenting` (section 10) still says that a slideshow is running at all; `present.state` adds where it is.
+
+### 16.3 Mac media
+
+| type | dir | fields |
+|---|---|---|
+| `mac.media.watch` | P→M | `on` bool. While on, the Mac sends `mac.media` on change. |
+| `mac.media` | M→P | `active` bool. When true: `app` (`"Music"` or `"Spotify"`), `title`, `artist`, `album`, `playing` bool, `position` ms, `duration` ms, `ts` ms epoch (when `position` was sampled), `canSeek`, `art` (optional base64 JPEG of at most 400 px, sent only when the track changes). Always: `volume` (0..1, the system output volume). `error`: `"automation"` when macOS has not let Mydroid control the player yet. |
+| `mac.media.cmd` | P→M | `action`: `"toggle"`, `"next"`, `"prev"`, `"seek"` (plus `position` ms) or `"volume"` (plus `value` 0..1). |
+
+- Song details come from Music and Spotify only (their own scripting). Other apps still answer the media keys of section 10, and the phone says so.
+- The Mac never starts Music or Spotify to look at them: it reads them only while they are running.
+- The first request makes macOS ask whether Mydroid may control the player; until then `mac.media` carries `error:"automation"`.

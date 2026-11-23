@@ -14,6 +14,8 @@ interface PointerSink {
     fun click(button: String, count: Int)
     fun down(button: String)
     fun up(button: String)
+    /** Three fingers moved across the pad: [direction] is `"left"`, `"right"`, `"up"` or `"down"`, the way the fingers went. */
+    fun swipe(direction: String) {}
 }
 
 class TrackpadConfig(
@@ -42,8 +44,19 @@ class TrackpadConfig(
     /** Momentum decays as exp(-t / tau). */
     val momentumTauMs: Double = 320.0,
     val momentumStopPxPerS: Double = 14.0,
+    /** Pointer speed multiplier from the pad settings (1.0 is the tuned default). */
+    val speedScale: Double = 1.0,
+    /** Flip the scroll direction. */
+    val reverseScroll: Boolean = false,
+    /** Off: only the click bar clicks; taps and the two-finger tap do nothing. */
+    val tapToClick: Boolean = true,
+    /** Three fingers must travel this far, in dp, to count as a swipe. */
+    val swipeDp: Double = 56.0,
 ) {
-    fun gain(speedDpPerS: Double): Double = min(accelMax, accelBase + accelSlope * speedDpPerS)
+    fun gain(speedDpPerS: Double): Double = min(accelMax, accelBase + accelSlope * speedDpPerS) * speedScale
+    private val scrollSign: Double get() = if (reverseScroll) -1.0 else 1.0
+    /** Scroll pixels per dp of travel, signed. */
+    val signedScrollGain: Double get() = scrollGain * scrollSign
 }
 
 /**
@@ -64,7 +77,7 @@ class TrackpadEngine(
     /** Called when [active] may have turned true, so the caller can start its frame loop. */
     private val wake: () -> Unit = {},
 ) {
-    private enum class Mode { Idle, Single, Drag, Multi, Ignore }
+    private enum class Mode { Idle, Single, Drag, Multi, Swipe, Ignore }
 
     private var mode = Mode.Idle
 
@@ -107,6 +120,11 @@ class TrackpadEngine(
     private var endFlingVx = 0.0
     private var endFlingVy = 0.0
 
+    // three fingers
+    private var swipeCx = 0.0
+    private var swipeCy = 0.0
+    private var swiped = false
+
     // momentum
     private var momActive = false
     private var momVx = 0.0
@@ -130,12 +148,14 @@ class TrackpadEngine(
         }
         when (mode) {
             Mode.Idle -> when {
+                fingers.size >= 3 -> startSwipe(fingers)
                 fingers.size >= 2 -> startMulti(now, fingers, fromSingle = false)
                 fingers.size == 1 -> startSingle(now, fingers[0])
             }
             Mode.Single -> single(now, fingers)
             Mode.Drag -> drag(now, fingers)
             Mode.Multi -> multi(now, fingers)
+            Mode.Swipe -> swipe(fingers)
             Mode.Ignore -> if (fingers.isEmpty()) mode = Mode.Idle
         }
         if (active) wake()
@@ -178,6 +198,7 @@ class TrackpadEngine(
 
     private fun single(now: Long, fingers: List<Finger>) {
         if (fingers.isEmpty()) { endSingle(now); return }
+        if (fingers.size >= 3) { startSwipe(fingers); return }
         if (fingers.size >= 2) { startMulti(now, fingers, fromSingle = true); return }
         val f = fingers[0]
         if (f.id != activeId) { activeId = f.id; lastX = f.x; lastY = f.y; lastT = now; return }
@@ -191,7 +212,7 @@ class TrackpadEngine(
 
     private fun endSingle(now: Long) {
         mode = Mode.Idle
-        if (moved || now - downT > cfg.tapMaxMs) return
+        if (moved || now - downT > cfg.tapMaxMs || !cfg.tapToClick) return
         val dbl = now - lastTapT <= cfg.doubleTapMs && hypot(downX - lastTapX, downY - lastTapY) <= cfg.doubleTapSlopDp
         haptic()
         out.click("left", if (dbl) 2 else 1)
@@ -238,6 +259,29 @@ class TrackpadEngine(
         releaseQueued = false
     }
 
+    // ---------------------------------------------------------------- three fingers
+
+    private fun startSwipe(fingers: List<Finger>) {
+        mode = Mode.Swipe
+        val f = fingers.sortedBy { it.id }.take(3)
+        swipeCx = f.sumOf { it.x } / f.size; swipeCy = f.sumOf { it.y } / f.size
+        swiped = false
+        moved = false
+    }
+
+    /** One swipe per touch: the first time the three fingers have travelled far enough, in the direction that dominates. */
+    private fun swipe(fingers: List<Finger>) {
+        if (fingers.size < 3) { mode = if (fingers.isEmpty()) Mode.Idle else Mode.Ignore; return }
+        if (swiped) return
+        val f = fingers.sortedBy { it.id }.take(3)
+        val dx = f.sumOf { it.x } / f.size - swipeCx
+        val dy = f.sumOf { it.y } / f.size - swipeCy
+        if (hypot(dx, dy) < cfg.swipeDp) return
+        swiped = true
+        haptic()
+        out.swipe(if (kotlin.math.abs(dx) >= kotlin.math.abs(dy)) (if (dx < 0) "left" else "right") else (if (dy < 0) "up" else "down"))
+    }
+
     // ---------------------------------------------------------------- two fingers
 
     private fun two(fingers: List<Finger>) = fingers.sortedBy { it.id }.take(2)
@@ -262,6 +306,7 @@ class TrackpadEngine(
             mode = if (fingers.isEmpty()) Mode.Idle else Mode.Ignore
             return
         }
+        if (fingers.size >= 3) { endMulti(now); startSwipe(fingers); return }
         val f = two(fingers)
         for (p in f) {
             val s = startPos[p.id] ?: continue
@@ -274,8 +319,8 @@ class TrackpadEngine(
             scrolling = true
             lastCx = startCx; lastCy = startCy
         }
-        sdx += (cx - lastCx) * cfg.scrollGain
-        sdy += (cy - lastCy) * cfg.scrollGain
+        sdx += (cx - lastCx) * cfg.signedScrollGain
+        sdy += (cy - lastCy) * cfg.signedScrollGain
         lastCx = cx; lastCy = cy
         samples.addLast(Triple(now, cx, cy))
         while (samples.size > 2 && now - samples.first().first > cfg.velocityWindowMs) samples.removeFirst()
@@ -284,7 +329,7 @@ class TrackpadEngine(
 
     private fun endMulti(now: Long) {
         if (!scrolling) {
-            if (rightEligible && !travelled && now - multiT0 <= cfg.twoFingerTapMs) {
+            if (cfg.tapToClick && rightEligible && !travelled && now - multiT0 <= cfg.twoFingerTapMs) {
                 haptic()
                 out.click("right", 1)
             }
@@ -298,8 +343,8 @@ class TrackpadEngine(
         val first = samples.firstOrNull()
         if (last != null && first != null && last !== first && now - last.first <= 60 && last.first - first.first >= 10) {
             val dt = (last.first - first.first) / 1000.0
-            vx = (last.second - first.second) / dt * cfg.scrollGain
-            vy = (last.third - first.third) / dt * cfg.scrollGain
+            vx = (last.second - first.second) / dt * cfg.signedScrollGain
+            vy = (last.third - first.third) / dt * cfg.signedScrollGain
         }
         val fling = hypot(vx, vy) >= cfg.flingMinDpPerS * cfg.scrollGain
         endFlingVx = if (fling) vx else 0.0
@@ -354,4 +399,10 @@ class RemoteSender(private val send: (Message) -> Unit) : PointerSink {
     override fun click(button: String, count: Int) = send(RemoteWire.click(button, count))
     override fun down(button: String) = send(RemoteWire.down(button))
     override fun up(button: String) = send(RemoteWire.up(button))
+
+    /** macOS Spaces and Mission Control are ⌃ and an arrow: fingers going left reveal the desktop on the right. */
+    override fun swipe(direction: String) {
+        val key = when (direction) { "left" -> "right"; "right" -> "left"; "up" -> "up"; else -> "down" }
+        send(RemoteWire.key(key, setOf("ctrl")))
+    }
 }

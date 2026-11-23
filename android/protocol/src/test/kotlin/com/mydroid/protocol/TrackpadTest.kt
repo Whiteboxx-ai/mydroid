@@ -19,6 +19,7 @@ class TrackpadTest {
             override fun click(button: String, count: Int) { ev += Ev(now, "click-$button", count = count) }
             override fun down(button: String) { ev += Ev(now, "down") }
             override fun up(button: String) { ev += Ev(now, "up") }
+            override fun swipe(direction: String) { ev += Ev(now, "swipe-$direction") }
         }
         val engine = TrackpadEngine(sink, cfg, haptic = { haptics++ })
 
@@ -220,5 +221,82 @@ class TrackpadTest {
         val r = Rig()
         r.at(0, f(1, 0.0, 0.0)); r.at(10, f(1, 30.0, 0.0)); r.at(20); r.tickTo(60)
         assertFalse(r.engine.active)
+    }
+
+    // ---------------------------------------------------------------- three fingers
+
+    private fun three(r: Rig, t: Long, dx: Double, dy: Double) =
+        r.at(t, f(1, 100.0 + dx, 200.0 + dy), f(2, 140.0 + dx, 200.0 + dy), f(3, 180.0 + dx, 200.0 + dy))
+
+    @Test fun threeFingersSwipeOnceInTheDirectionTheyWent() {
+        for ((dx, dy, want) in listOf(Triple(-90.0, 5.0, "swipe-left"), Triple(90.0, -5.0, "swipe-right"), Triple(4.0, -90.0, "swipe-up"), Triple(4.0, 90.0, "swipe-down"))) {
+            val r = Rig()
+            three(r, 0, 0.0, 0.0)
+            for (i in 1..9) three(r, i * 10L, dx * i / 9, dy * i / 9)
+            three(r, 120, dx * 1.2, dy * 1.2)   // keeps going: still only one swipe
+            r.at(140)
+            assertEquals(1, r.kinds().count { it.startsWith("swipe") })
+            assertEquals(want, r.kinds().single { it.startsWith("swipe") })
+            assertTrue("no cursor move or scroll from a swipe", r.kinds().none { it == "move" || it == "scroll" })
+        }
+    }
+
+    @Test fun threeFingersThatBarelyMoveDoNothing() {
+        val r = Rig()
+        three(r, 0, 0.0, 0.0); three(r, 50, 8.0, 3.0); r.at(90)
+        assertTrue(r.kinds().none { it.startsWith("swipe") || it.startsWith("click") })
+    }
+
+    @Test fun aThirdFingerDuringTwoFingerScrollEndsTheScrollAndSwipes() {
+        val r = Rig()
+        r.at(0, f(1, 100.0, 200.0), f(2, 140.0, 200.0))
+        for (i in 1..6) r.at(i * 10L, f(1, 100.0, 200.0 + i * 8), f(2, 140.0, 200.0 + i * 8))
+        r.at(70, f(1, 100.0, 248.0), f(2, 140.0, 248.0), f(3, 180.0, 248.0))
+        for (i in 1..8) r.at(70 + i * 10L, f(1, 100.0 - i * 12, 248.0), f(2, 140.0 - i * 12, 248.0), f(3, 180.0 - i * 12, 248.0))
+        r.at(200)
+        r.tickTo(400)
+        assertTrue(r.ev.any { it.kind == "scroll" && it.phase == "ended" })
+        assertEquals(listOf("swipe-left"), r.kinds().filter { it.startsWith("swipe") })
+    }
+
+    // ---------------------------------------------------------------- pad settings
+
+    @Test fun pointerSpeedScalesTheCursor() {
+        fun travel(scale: Double): Double {
+            val r = Rig(TrackpadConfig(speedScale = scale))
+            r.at(0, f(1, 100.0, 100.0)); var x = 100.0; var t = 0L
+            while (t < 200) { t += 8; x += 4.0; r.at(t, f(1, x, 100.0)) }
+            r.tickTo(t + 20)
+            return r.sumMove().first
+        }
+        assertEquals(travel(1.0) * 1.5, travel(1.5), 0.5)
+        assertTrue(travel(0.6) < travel(1.0))
+    }
+
+    @Test fun reverseScrollFlipsTheDirection() {
+        fun scrollY(reverse: Boolean): Double {
+            val r = Rig(TrackpadConfig(reverseScroll = reverse))
+            r.at(0, f(1, 100.0, 200.0), f(2, 140.0, 200.0))
+            for (i in 1..10) r.at(i * 10L, f(1, 100.0, 200.0 + i * 5), f(2, 140.0, 200.0 + i * 5))
+            r.at(120); r.tickTo(150)
+            return r.ev.filter { it.kind == "scroll" && it.phase != "momentum" }.sumOf { it.dy }
+        }
+        assertTrue(scrollY(false) > 0)
+        assertEquals(-scrollY(false), scrollY(true), 0.001)
+    }
+
+    @Test fun tapToClickOffIgnoresTaps() {
+        val r = Rig(TrackpadConfig(tapToClick = false))
+        r.at(0, f(1, 100.0, 100.0)); r.at(60); r.tickTo(100)
+        r.at(200, f(1, 100.0, 100.0), f(2, 140.0, 100.0)); r.at(260)
+        assertTrue(r.kinds().none { it.startsWith("click") })
+    }
+
+    @Test fun swipeSenderSendsTheSpacesShortcut() {
+        val sent = ArrayList<Message>()
+        val s = RemoteSender { sent += it }
+        s.swipe("left"); s.swipe("right"); s.swipe("up"); s.swipe("down")
+        assertEquals(listOf("right", "left", "up", "down"), sent.map { it.str("key") })
+        assertTrue(sent.all { m -> (m.header["mods"] as kotlinx.serialization.json.JsonArray).map { (it as kotlinx.serialization.json.JsonPrimitive).content } == listOf("ctrl") })
     }
 }

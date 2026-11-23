@@ -189,6 +189,19 @@ class ConnectionManager(private val app: Application) {
         override fun send(m: Message) = sendInput(m)
         override fun ask() = mac.remoteAsk()
         override fun volumeKeys(handler: ((up: Boolean) -> Unit)?) { com.mydroid.android.remote.VolumeKeys.handler = handler }
+        override fun loadApps() = mac.loadApps()
+        override fun launchApp(app: com.mydroid.protocol.MacApp) = mac.launchApp(app.id, app.name)
+        override fun openFile(hit: com.mydroid.protocol.FsHit) = mac.openFile(hit.root, hit.path, hit.entry.name)
+        override fun startPresentation(hit: com.mydroid.protocol.FsHit, play: Boolean) = mac.startPresentation(hit.root, hit.path, com.mydroid.protocol.Decks.title(hit.entry.name), play)
+        override fun watchPresent(on: Boolean) = mac.watchPresent(on)
+        override fun watchMedia(on: Boolean) = mac.watchMedia(on)
+        override fun mediaCommand(m: Message) = mac.mediaCommand(m)
+        override fun openLink(url: String) { postNotice(sendText(url, "remote")) }
+        override fun findFiles(query: String): List<com.mydroid.protocol.FsHit>? {
+            if (!isConnected) return null
+            val f = if (query.isBlank()) macFiles.client.recent() else macFiles.client.search(query.trim())
+            return runCatching { f.get(20, java.util.concurrent.TimeUnit.SECONDS) }.getOrNull()?.takeIf { it.ok }?.value
+        }
     }
 
     /** MainActivity is in front or not. A presentation notification is pointless while the app is open. */
@@ -661,7 +674,7 @@ class ConnectionManager(private val app: Application) {
             "media.cmd" -> if (settings.media) media.command(m.str("action") ?: "", m.long("position"))
             "find.ring" -> FindMyPhone.start(app)
             "find.stop" -> FindMyPhone.stop(app)
-            "remote.state", "mac.status", "mac.result", "mac.shortcuts" -> mac.onMessage(m)
+            "remote.state", "mac.status", "mac.result", "mac.shortcuts", "mac.apps", "present.state", "mac.media" -> mac.onMessage(m)
             "auth.list.get", "auth.code.get", "auth.domain.set", "auth.import" -> auth.bridge.dispatch(m)
             else -> if (requests.handles(m.type)) requests.dispatch(m)
         }
