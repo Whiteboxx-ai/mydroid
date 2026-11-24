@@ -1,0 +1,14 @@
+---
+import CopyBlock from './CopyBlock.astro';
+
+const prompt = `Help me install and pair Mydroid on this Mac and my Android phone. Use the official setup guide at https://mydroid.whiteboxx.ai/get-started/.
+
+Check that this Mac runs macOS 14 or later. If you can run commands on this Mac, use the Mac guide’s installer and verify that Mydroid opens. If Mydroid is already installed, check it before reinstalling. Keep my existing settings and pairing.
+
+Send me the official Android install guide at https://mydroid.whiteboxx.ai/get-started/install-android/. Walk me through opening the downloaded APK, responding to Android’s prompts, and scanning the QR code on the Mac. Pause for me when I need to tap a setting, grant permission, or confirm the code. The normal setup uses the APK directly and needs no Android debugging.
+
+Once the phone shows as connected, help me test it by sharing a link from Android to Mydroid. If you can’t run commands on my Mac, give me the next step to take myself.`;
+---
+<p>Open Claude Code or Codex on your Mac and paste this prompt. Your AI can run the Mac installer and guide you through the steps on your phone.</p>
+
+<CopyBlock text={prompt} label="Copy prompt" successMessage="Copied. Paste it into Claude Code or Codex." />

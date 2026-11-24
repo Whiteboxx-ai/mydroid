@@ -1,0 +1,60 @@
+---
+interface Props {
+  text: string;
+  label: string;
+  successMessage: string;
+}
+const { text, label, successMessage } = Astro.props;
+---
+<div class="copy-block">
+  <pre><code>{text}</code></pre>
+  <div class="copy-actions">
+    <button type="button" data-copy-text={text} data-copy-success={successMessage}>{label}</button>
+    <slot />
+  </div>
+  <p role="status" data-copy-result></p>
+</div>
+
+<script>
+  for (const button of document.querySelectorAll<HTMLButtonElement>('.copy-block [data-copy-text]')) {
+    button.addEventListener('click', async () => {
+      const result = button.closest('.copy-block')?.querySelector('[data-copy-result]');
+      if (!result || !button.dataset.copyText) return;
+      try {
+        await navigator.clipboard.writeText(button.dataset.copyText);
+        result.textContent = button.dataset.copySuccess ?? 'Copied.';
+      } catch {
+        const code = button.closest('.copy-block')?.querySelector('code');
+        const selection = window.getSelection();
+        if (!code || !selection) return;
+        selection.selectAllChildren(code);
+        result.textContent = 'The text is selected. Use your device’s Copy command.';
+      }
+    });
+  }
+</script>
+
+<style>
+  .copy-block pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    padding: .9rem 1rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: .45rem;
+    background: var(--sl-color-bg-inline-code);
+  }
+  .copy-block code { color: var(--sl-color-text); }
+  .copy-actions { display: flex; flex-wrap: wrap; gap: .65rem 1rem; align-items: center; }
+  .copy-actions > * { margin-top: 0; }
+  button {
+    background: #0b6e63;
+    color: #fff;
+    font: inherit;
+    font-weight: 600;
+    border: 0;
+    border-radius: .4rem;
+    padding: .45rem .85rem;
+    cursor: pointer;
+  }
+  [data-copy-result]:empty { display: none; }
+</style>

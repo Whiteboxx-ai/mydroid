@@ -1,55 +1,8 @@
 ---
+import CopyBlock from './CopyBlock.astro';
+
 const command = 'curl -fsSL https://raw.githubusercontent.com/gautamm20/mydroid/main/install.sh | bash';
 ---
-<div class="install-command">
-  <pre><code>{command}</code></pre>
-  <div class="install-actions">
-    <button type="button" data-copy={command}>Copy install command</button>
-    <a href="https://github.com/gautamm20/mydroid/blob/main/install.sh">Read the script</a>
-  </div>
-  <p role="status" data-copy-result></p>
-</div>
-
-<script>
-  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-copy]')) {
-    button.addEventListener('click', async () => {
-      const result = button.closest('.install-command')?.querySelector('[data-copy-result]');
-      if (!result || !button.dataset.copy) return;
-      try {
-        await navigator.clipboard.writeText(button.dataset.copy);
-        result.textContent = 'Copied. Paste it into Terminal and press Return.';
-      } catch {
-        const code = button.closest('.install-command')?.querySelector('code');
-        const selection = window.getSelection();
-        if (!code || !selection) return;
-        selection.selectAllChildren(code);
-        result.textContent = 'The command is selected. Press ⌘C to copy it.';
-      }
-    });
-  }
-</script>
-
-<style>
-  .install-command pre {
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-    padding: .9rem 1rem;
-    border: 1px solid var(--sl-color-gray-5);
-    border-radius: .45rem;
-    background: var(--sl-color-bg-inline-code);
-  }
-  .install-command code { color: var(--sl-color-text); }
-  .install-actions { display: flex; flex-wrap: wrap; gap: .65rem 1rem; align-items: center; }
-  .install-actions > * { margin-top: 0; }
-  button {
-    background: #0b6e63;
-    color: #fff;
-    font: inherit;
-    font-weight: 600;
-    border: 0;
-    border-radius: .4rem;
-    padding: .45rem .85rem;
-    cursor: pointer;
-  }
-  [data-copy-result]:empty { display: none; }
-</style>
+<CopyBlock text={command} label="Copy install command" successMessage="Copied. Paste it into Terminal and press Return.">
+  <a href="https://github.com/gautamm20/mydroid/blob/main/install.sh">Read the script</a>
+</CopyBlock>
