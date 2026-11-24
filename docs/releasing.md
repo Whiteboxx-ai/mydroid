@@ -19,4 +19,4 @@ Release files use fixed names (`Mydroid-mac.zip`, `Mydroid.apk`) so `releases/la
 
 ## Before the repo goes public
 
-Choose a license, settle the `platform-tools` redistribution terms (`mac/scripts/build-app.sh`), and add the Android account for developer verification before January 2027.
+Choose a license and add the Android account for developer verification before January 2027.

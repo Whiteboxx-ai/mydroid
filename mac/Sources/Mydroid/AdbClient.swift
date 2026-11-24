@@ -1,7 +1,7 @@
 import Foundation
 import MydroidCore
 
-// Runs the bundled adb (Android platform-tools). Mydroid has its own adb server on its own port and its own key home, so it
+// Runs an adb (Android platform-tools). Mydroid has its own adb server on its own port and its own key home, so it
 // never fights a developer's adb on 5037 and never touches their ~/.android.
 
 struct AdbResult: Sendable {

@@ -11,7 +11,7 @@ cd mac
 swift build            # debug build of everything
 swift test             # vectors, codec, loopback pairing/transfer, the test-server smoke run, and the v1.5 Remote / quick actions / walk-away tests, and the v1.8 camera-import and Continue on Mac tests
 MYDROID_RENDER_DIR=/some/dir swift test --filter MydroidRenderTests   # off-screen PNGs of popover, banners, Settings and the full window (fixtures, light and dark)
-scripts/build-app.sh   # release build -> ../build/Mydroid.app (ad-hoc signed, adb bundled) and ../build/mydroid-test-server
+scripts/build-app.sh   # release build -> ../build/Mydroid.app (ad-hoc signed) and ../build/mydroid-test-server
 OUT=/some/dir scripts/build-app.sh   # same, into /some/dir instead of ../build
 open ../build/Mydroid.app
 ```
@@ -213,7 +213,7 @@ to stop keeping wireless debugging on.
   `StreamResampler` (windowed sinc, any hardware rate to and from 16 kHz), `AudioLink` (UDP socket, authenticated packets only;
   uplink goes to the source address of the downlink), `LocalAddress.reaching(host:)` (the Mac IP that reaches the phone).
   `AdbSupport.swift` has the pure parts of adb and the helper's JSON lines (QR payload, mDNS and device parsing, tiers, backoff).
-- `Sources/Mydroid/AdbClient.swift`: runs the bundled adb with its **own server** (`ADB_SERVER_SOCKET=tcp:localhost:5099`,
+- `Sources/Mydroid/AdbClient.swift`: runs adb with its **own server** (`ADB_SERVER_SOCKET=tcp:localhost:5099`,
   `ANDROID_ADB_SERVER_PORT=5099`) and its **own key home** (`HOME` is `Application Support/Mydroid/adb-home`), so it never
   touches a developer's adb on 5037 or their `~/.android`. `MYDROID_ADB` points at another adb for development.
 - `Sources/Mydroid/CallAudioController.swift`: setup, reconnects (when the phone link comes up and wireless debugging answers),
@@ -228,10 +228,7 @@ to stop keeping wireless debugging on.
   once, after the first routed call; shown in the popover and in Settings), and Settings > Calls (state, tier, wireless
   debugging, last connected, Set up / Turn off, "Use Mac audio when I answer on Mac" (off by default), speaker and microphone).
 
-**adb is bundled from Android platform-tools.** `scripts/build-app.sh` copies `$HOME/Library/Android/sdk/platform-tools/adb`
-(or `$MYDROID_ADB`) into `Contents/Resources/adb`, copies any non-system library it links (none today: it is one universal
-binary that links only system libraries) and signs it ad hoc inside the bundle. Without it the build still works and the app says
-call audio isn't available. **Check the platform-tools licence terms before any public distribution.**
+**adb is not bundled.** Call audio uses an adb the Mac already has (`MYDROID_ADB`, or the Android SDK's `platform-tools`). Without one the app says call audio isn't available.
 
 Not verified against a real phone or a real call: the helper on the phone, QR pairing and mDNS on a real network, the keep-alive
 grant, the `adb.verify` file, tier detection, and the audio engine itself (voice processing, device selection, latency, echo, the

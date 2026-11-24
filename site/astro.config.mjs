@@ -2,7 +2,7 @@ import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 
 export default defineConfig({
-  site: 'https://mydroid.app',
+  site: 'https://mydroid.whiteboxx.ai',
   integrations: [
     starlight({
       title: 'Mydroid',

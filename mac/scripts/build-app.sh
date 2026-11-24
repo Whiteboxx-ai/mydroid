@@ -1,7 +1,6 @@
 #!/bin/bash
 # Builds Mydroid.app (ad-hoc signed) and mydroid-test-server into $OUT (default: build/ at the repo root).
-# adb (Android platform-tools) is copied into Contents/Resources/adb for Mac call audio. Set MYDROID_ADB to use another copy.
-# Check the platform-tools licence terms before any public distribution of this app.
+# adb is not bundled. Mac call audio uses an adb the user already has (see AdbClient.swift) and is off without one.
 set -euo pipefail
 
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
@@ -31,30 +30,6 @@ else
   echo "warning: no extension/ folder; the bundle has no browser extension" >&2
 fi
 
-# adb for Mac call audio (PROTOCOL.md 8). A single universal binary that links only system libraries; any other library it
-# links (none today) is copied next to it and re-pointed, so the bundle never depends on the SDK folder.
-ADB_SRC="${MYDROID_ADB:-$HOME/Library/Android/sdk/platform-tools/adb}"
-if [ -x "$ADB_SRC" ]; then
-  cp "$ADB_SRC" "$APP/Contents/Resources/adb"
-  chmod 755 "$APP/Contents/Resources/adb"
-  while IFS= read -r lib; do
-    case "$lib" in
-      /usr/lib/*|/System/*|@rpath/*|@executable_path/*|@loader_path/*|"") ;;
-      *)
-        echo "adb links a non-system library: $lib" >&2
-        mkdir -p "$APP/Contents/Resources/lib"
-        cp "$lib" "$APP/Contents/Resources/lib/$(basename "$lib")"
-        install_name_tool -change "$lib" "@executable_path/lib/$(basename "$lib")" "$APP/Contents/Resources/adb"
-        codesign --force -s - "$APP/Contents/Resources/lib/$(basename "$lib")"
-        ;;
-    esac
-  done < <(otool -L "$APP/Contents/Resources/adb" | grep -E '^[[:space:]]' | awk '{print $1}' | sort -u)
-  codesign --force -s - "$APP/Contents/Resources/adb"
-  ADB_NOTE="$("$APP/Contents/Resources/adb" version | head -1)"
-else
-  echo "warning: adb not found at $ADB_SRC; Mac call audio will say it isn't available in this build" >&2
-  ADB_NOTE="no adb"
-fi
 
 # App icon: the .icns is cut from assets/icon-1024.png (regenerate that with scripts/make-icons.py).
 ICONSET="$(mktemp -d)/Mydroid.iconset"
@@ -136,5 +111,5 @@ plutil -lint "$APP/Contents/Info.plist"
 mkdir -p "$BUILD"
 cp "$BIN_DIR/mydroid-test-server" "$BUILD/mydroid-test-server"
 
-echo "Built $APP ($ADB_NOTE)"
+echo "Built $APP"
 echo "Built $BUILD/mydroid-test-server"

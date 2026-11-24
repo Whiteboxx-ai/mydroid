@@ -16,7 +16,7 @@ A Mac menu-bar app (`mac/`), an Android app (`android/`), a Chrome extension (`e
 - All icons and store images come from `scripts/make-icons.py`. Edit the script and re-run it; leave generated files untouched. The brand is the Dock mark in teal (`#0B6E63`), with coral as the single warm accent.
 - Every rebuild of the Mac app is a new ad-hoc signature, and macOS drops its Accessibility permission. Run `tccutil reset Accessibility com.mydroid.mac` after a rebuild, or use the Reset button on the permission card.
 - The Android signing key lives in `~/.mydroid-release/` and in CI secrets. It never enters the repo. Losing it blocks in-place updates for every user.
-- `platform-tools` (adb) is bundled in the Mac app by `mac/scripts/build-app.sh`. Its redistribution terms are unconfirmed, so keep it out of anything described as final until that is settled.
+- adb is not bundled. The Android app is a direct APK download from the site, and Mac call audio uses an adb the user already has.
 
 ## Writing for users
 
