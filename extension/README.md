@@ -82,6 +82,7 @@ and sent with the request so the phone can pick the right account.
 ```sh
 node test/background.test.js        # 5 checks: hello on install and on startup, nothing else in it, a missing host never throws
 node test/access.test.js            # 6 checks: no up-front host access, the welcome page on first install, the script follows the granted sites
+node test/welcome.test.js           # welcome page and setup state
 node test/detector.test.js          # 16 checks: single input, split boxes, a Salesforce-like page, non-OTP numeric fields that must not trigger
 node test/e2e.mjs                   # needs Node 22+ and a Chromium browser; add --shots <dir> to save a PNG per chip state (light and dark)
 ```

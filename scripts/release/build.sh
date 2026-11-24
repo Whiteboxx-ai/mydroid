@@ -1,7 +1,7 @@
 #!/bin/bash
 # Builds every release file into dist/: Mydroid-mac.zip, Mydroid.apk, Mydroid-extension.zip and SHA256SUMS.
 #   scripts/release/build.sh 0.2.0
-# The Android signing key comes from the environment (CI secrets), or from ~/.mydroid-release/ on your Mac:
+# The Android signing key comes from the environment or from ~/.mydroid-release/ on your Mac:
 #   MYDROID_KEYSTORE, MYDROID_KEYSTORE_PASSWORD, MYDROID_KEY_ALIAS (default: mydroid)
 # First run on a Mac with no key creates one in ~/.mydroid-release/. Back that folder up: a lost key means
 # nobody can update the phone app without uninstalling it first.

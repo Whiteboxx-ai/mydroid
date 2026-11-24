@@ -151,6 +151,22 @@ private fun items(vararg names: String) = buildJsonArray {
 }
 
 class FsClientTest {
+    @Test fun handlesRepliesThatArriveBeforeSendReturns() {
+        lateinit var client: FsClient
+        client = FsClient({ request ->
+            val reply = if (request.type == "fs.list") {
+                Message.of("fs.list.result") { put("req", request.str("req")!!); put("items", items("a.txt")) }
+            } else {
+                Message.of("fs.error") { put("req", request.str("req")!!); put("error", "not_found") }
+            }
+            client.onMessage(reply)
+        }, tmpDir())
+        assertEquals("a.txt", client.list("docs", "").get(2, TimeUnit.SECONDS).value?.single()?.name)
+        val fetch = client.get("docs", "gone.txt", File(tmpDir(), "gone.txt"))
+        val error = runCatching { fetch.done.get(2, TimeUnit.SECONDS) }.exceptionOrNull()
+        assertEquals("not_found", (error?.cause as? FsException)?.code)
+    }
+
     private fun setup(): Pair<FakeMacLink, FsClient> {
         lateinit var c: FsClient
         val link = FakeMacLink { c }

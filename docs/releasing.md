@@ -2,14 +2,15 @@
 
 ## One-time setup
 
-1. Create the Android signing key by running `scripts/release/build.sh 0.1.0` once on your Mac. It writes `~/.mydroid-release/mydroid.jks` and `password`. Back that folder up.
-2. For automated GitHub releases, in the GitHub repo, add two secrets: `ANDROID_KEYSTORE_BASE64` (`base64 -i ~/.mydroid-release/mydroid.jks | pbcopy`) and `ANDROID_KEYSTORE_PASSWORD` (the contents of `password`).
+Keep the existing Android signing key and password in `~/.mydroid-release/` on your release Mac. Back up that folder. Updates must use the same key as the public APK.
 
 ## Each release
 
-1. Update `CHANGELOG.md`.
-2. Tag and push: `git tag v0.2.0 && git push origin v0.2.0`.
-3. The Release workflow builds the Mac app (Apple silicon and Intel), the signed APK and the extension zip, attests them, and publishes them with `SHA256SUMS`.
+1. Run the local tests for the parts you changed. See [Contributing](../CONTRIBUTING.md).
+2. Update `CHANGELOG.md` and push the release commit.
+3. On the Mac with the signing key, run `scripts/release/build.sh 0.2.0` with the new version. It builds the Mac app for Apple silicon and Intel, the signed APK, and the extension ZIP.
+4. Run `(cd dist && shasum -a 256 -c SHA256SUMS)`. Check the Android signing certificate against the previous release.
+5. Create a draft GitHub release for the version, targeting the release commit. Attach the three binaries and `SHA256SUMS`. Publish once GitHub shows all four assets.
 
 Release files use fixed names (`Mydroid-mac.zip`, `Mydroid.apk`) so `releases/latest/download/<name>` links and `install.sh` always work.
 

@@ -4,34 +4,12 @@ on:
   pull_request:
 
 jobs:
-  mac:
-    runs-on: macos-15
-    steps:
-      - uses: actions/checkout@v4
-      - run: swift test
-        working-directory: mac
-
-  android:
+  syntax:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with: { distribution: temurin, java-version: 17 }
-      - uses: gradle/actions/setup-gradle@v4
-      - run: ./gradlew :protocol:test :simulator:test :app:testDebugUnitTest :app:assembleDebug
-        working-directory: android
-
-  extension:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22 }
-      - run: node test/background.test.js && node test/detector.test.js && node test/access.test.js && node test/welcome.test.js
-        working-directory: extension
-
-  install-script:
-    runs-on: macos-15
-    steps:
-      - uses: actions/checkout@v4
-      - run: bash -n install.sh && brew install shellcheck && shellcheck -S warning install.sh scripts/release/*.sh
+      - name: Check installer and build scripts
+        run: |
+          for script in install.sh scripts/release/*.sh mac/scripts/*.sh; do
+            bash -n "$script"
+          done

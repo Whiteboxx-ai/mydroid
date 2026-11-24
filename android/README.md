@@ -9,11 +9,14 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk@17
 echo "sdk.dir=$HOME/Library/Android/sdk" > local.properties
 ./gradlew :protocol:test                 # crypto vectors, codec, transfer resume
 ./gradlew :simulator:test                # full 10-step smoke vs an in-test fake Mac
+./gradlew :app:testDebugUnitTest         # Android unit tests and off-screen renders
 ./gradlew :simulator:installDist         # simulator/build/install/simulator/bin/simulator
 ./gradlew :app:assembleDebug             # app/build/outputs/apk/debug/app-debug.apk
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 AGP 9.2.1 (9.3.1 needs Gradle 9.5; we are on 9.4.1), Kotlin 2.2.21, Compose BOM 2026.06.01.
+
+After Gradle has downloaded the dependencies, add `--offline` to run the tests without network access.
 
 Screenshot tests (Robolectric + Roborazzi, JVM only): `./gradlew :app:testDebugUnitTest` renders Home (including the Your Mac card), Settings, the text-send and Shortcuts sheets, Remote in each mode (and its "allow on your Mac" overlay) and the pairing Confirm screen (light/dark, 360 dp, 1.3x font) to `-Drender.dir=<dir>` (default in `app/build.gradle.kts`).
 

@@ -242,8 +242,18 @@ class FsClient(
     private fun request(m: Message, timeoutMs: Long): CompletableFuture<Message> {
         val req = m.str("req")!!
         val f = CompletableFuture<Message>()
-        if (!send(m)) { f.completeExceptionally(FsException("offline")); return f }
+        // Publish the request before sending. A reply can arrive before send returns.
         pending[req] = f
+        try {
+            if (!send(m)) {
+                pending.remove(req, f)
+                f.completeExceptionally(FsException("offline"))
+                return f
+            }
+        } catch (e: Exception) {
+            pending.remove(req, f)
+            throw e
+        }
         val timer = timers.schedule({ if (pending.remove(req, f)) f.completeExceptionally(FsException("timeout")) }, timeoutMs, TimeUnit.MILLISECONDS)
         f.whenComplete { _, _ -> pending.remove(req, f); timer.cancel(false) }
         return f
@@ -284,9 +294,14 @@ class FsClient(
     fun get(root: String, path: String, target: File): FsGet {
         val req = newReq()
         val g = FsGet(req, target, File(partDir, "fs_$req.part"))
-        if (!send(FsWire.get(req, root, path))) { g.done.completeExceptionally(FsException("offline")); return g }
         gets[req] = g
         g.done.whenComplete { _, _ -> gets.remove(req, g) }
+        try {
+            if (!send(FsWire.get(req, root, path))) g.done.completeExceptionally(FsException("offline"))
+        } catch (e: Exception) {
+            gets.remove(req, g)
+            throw e
+        }
         return g
     }
 
