@@ -40,6 +40,17 @@ class PresenceTest {
         assertTrue(m.parked(120_000))
     }
 
+    @Test fun restartingPresenceDoesNotReuseAnOldSighting() {
+        val m = PresenceMachine(120_000)
+        m.setEnabled(true, 0)
+        m.onFound()
+        m.setEnabled(false, 1)
+        assertFalse(m.parked(120_001))
+        m.setEnabled(true, 200_000)
+        assertFalse(m.isPresent())
+        assertTrue(m.parked(320_000))
+    }
+
     @Test fun presenceOrTcpKeepsItRunningAndLossRestartsWindow() {
         val m = PresenceMachine(120_000)
         m.setEnabled(true, 0)

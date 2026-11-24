@@ -34,6 +34,7 @@ class PresenceMachine(private val graceMs: Long = 120_000) {
 
     @Synchronized fun setEnabled(on: Boolean, now: Long) {
         if (on && !enabled) quietSince = now
+        if (!on) present = false
         enabled = on
     }
     @Synchronized fun isEnabled() = enabled

@@ -192,6 +192,7 @@ The Mac advertises a BLE service so the phone knows, at almost no battery cost, 
   - Creates a `CompanionDeviceManager` association using a BLE filter on that UUID. The user makes one tap in the system dialog during setup.
   - Registers a hardware-filtered, low-power, `PendingIntent`-based `BluetoothLeScanner` scan on the UUID, with `CALLBACK_TYPE_FIRST_MATCH | CALLBACK_TYPE_MATCH_LOST`.
   - **Mac found** → connect over Wi‑Fi now.
+  - After five failed LAN attempts, wait a minute between retries while the phone has a LAN connection and isn't parked. Wake the connection supervisor when Android exits Doze so it can retry sooner.
   - **Mac lost**, and the TCP session is gone for 2 min or more → stop the foreground service and stop every retry until the Mac is found again, a Wi‑Fi network appears, the user unlocks the phone, or the app opens.
 
 ### 7.2 Settings v2 (M→P `settings`, extra fields)

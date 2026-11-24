@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.3
+
+- Android keeps trying to reconnect when your Mac may still be reachable and retries sooner when the phone leaves Doze.
+- Mydroid falls back to Wi-Fi reconnection if it can’t start Bluetooth presence scanning.
+- Android Settings shows whether Mydroid is exempt from battery optimization. The help guide covers background settings by phone brand.
+- Compatible with Mydroid for Mac 0.1.2.
+
 ## 0.1.2
 
 - Install Mydroid Authenticator from the Chrome Web Store. Developer Mode is still available.

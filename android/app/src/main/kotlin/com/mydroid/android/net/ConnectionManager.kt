@@ -95,6 +95,7 @@ private class SessionCtx(val session: ClientSession, val engine: TransferEngine)
  */
 private const val TAG = "Mydroid"
 private const val MAX_ATTEMPTS = 5
+private const val SLOW_RETRY_MS = 60_000L
 private const val ATTEMPT_WINDOW_MS = 10_000L
 private const val KNOWN_WINDOW_MS = 2_500L
 private const val OUTBOX_TTL_MS = 10 * 60_000L
@@ -256,14 +257,15 @@ class ConnectionManager(private val app: Application) {
     }
 
     /**
-     * Park until something changes: a Wi-Fi/ethernet network, screen on / user present, the app opening,
-     * pairing. Nothing is dialled and no discovery runs while parked.
+     * Wait for a network change, screen wake, app open or pairing. When the Mac may still be
+     * reachable, also give the connection another chance after [retryAfterMs].
      */
-    private fun goDormant(why: String) {
-        android.util.Log.i(TAG, "idle: $why; waiting for network change, screen on or app open")
+    private fun goDormant(why: String, retryAfterMs: Long = 0) {
+        val retry = if (retryAfterMs == 0L) "" else " or retry timer"
+        android.util.Log.i(TAG, "idle: $why; waiting for network change, screen on, app open$retry")
         dormant = true
         try {
-            waitFor(0)
+            waitFor(retryAfterMs)
         } finally {
             dormant = false
         }
@@ -307,10 +309,11 @@ class ConnectionManager(private val app: Application) {
                 val connected = runPaired()
                 if (connected) {
                     backoff.reset(); failures = 0; waitFor(1_000)
-                } else if (++failures >= MAX_ATTEMPTS) {
-                    failures = 0; backoff.reset()
-                    goDormant("Mac unreachable after $MAX_ATTEMPTS attempts")
+                } else if (failures >= MAX_ATTEMPTS - 1) {
+                    // A Mac that restarted can be reachable again without a network or Bluetooth change.
+                    goDormant("Mac unreachable", SLOW_RETRY_MS)
                 } else {
+                    failures++
                     waitFor(backoff.nextDelay())
                 }
             } catch (e: Throwable) {
@@ -338,14 +341,15 @@ class ConnectionManager(private val app: Application) {
             mainHandler.post { notifs.listener?.refreshCompanionAccess() }
         }
         val now = System.currentTimeMillis()
-        val on = store.isPaired && Presence.ready(app)
+        val canScan = store.isPaired && Presence.ready(app)
         val was = presence.isEnabled()
-        presence.setEnabled(on, now)
-        if (on) {
+        if (canScan) {
             if (force || !scanRegistered) scanRegistered = Presence.register(app).ok
         } else if (scanRegistered || was) {
             Presence.unregister(app); scanRegistered = false
         }
+        val on = canScan && scanRegistered
+        presence.setEnabled(on, now)
         if (was != on) {
             android.util.Log.i(TAG, "presence ${if (on) "on: service follows the Mac's Bluetooth presence" else "off: always-on behaviour"}")
             if (!on) unpark("presence off", force = true)
@@ -1152,6 +1156,12 @@ class ConnectionManager(private val app: Application) {
                     // Broadcasts arrive on the main thread; heartbeatChanged(pingNow) writes to the socket.
                     Intent.ACTION_SCREEN_ON -> { screenOn = true; writer.execute { runCatching { sess?.session?.heartbeatChanged(pingNow = true) } }; wakeUp("screen on") }
                     Intent.ACTION_SCREEN_OFF -> { screenOn = false; writer.execute { runCatching { sess?.session?.heartbeatChanged() } } }
+                    PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED -> {
+                        if (!c.getSystemService(PowerManager::class.java).isDeviceIdleMode && !isConnected) {
+                            backoffReset = true
+                            poke()
+                        }
+                    }
                     // Settings may have changed while the phone was in use elsewhere (e.g. battery, permissions).
                     Intent.ACTION_USER_PRESENT -> { auth.onUserPresent(); unpark("user unlocked"); wakeUp("user present"); writer.execute { runCatching { refreshFeatures() } } }
                 }
@@ -1159,6 +1169,7 @@ class ConnectionManager(private val app: Application) {
         }
         val f = IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_ON); addAction(Intent.ACTION_SCREEN_OFF); addAction(Intent.ACTION_USER_PRESENT)
+            addAction(PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED)
         }
         app.registerReceiver(r, f, Context.RECEIVER_NOT_EXPORTED)
     }

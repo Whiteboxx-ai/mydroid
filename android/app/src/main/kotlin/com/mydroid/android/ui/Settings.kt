@@ -189,6 +189,12 @@ private fun settingGroups(
                 killedAt != null -> SettingRow(Glyphs.Battery, "Stay connected", "Mydroid stopped in the background ${ago(killedAt, now)}", Tone.Warn, "Fix", a.openOem)
                 else -> SettingRow(Glyphs.Battery, "Stay connected", "Background activity allowed", Tone.Ok)
             })
+            add(SettingRow(
+                Glyphs.Battery, "Battery optimization",
+                if (r.batteryOptimizationExempt) "Exempt" else "Standard",
+                Tone.Quiet, "Open settings", a.openBatteryOptimization,
+                info = Info("Battery optimization", "If sync stops while your phone is idle, find Mydroid in Android’s battery optimization list and choose Don’t optimize."),
+            ))
             if (!r.backgroundRestricted && autoStartTip && killedAt == null) {
                 add(SettingRow(
                     Icons.Default.Info, "Auto-start", "Optional", Tone.Quiet, "Open", a.openOem,

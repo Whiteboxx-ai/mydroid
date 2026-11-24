@@ -43,6 +43,7 @@ class Actions(
     val allowDial: () -> Unit = {},
     val allowAlerts: () -> Unit = {},
     val openBackgroundSettings: () -> Unit = {},
+    val openBatteryOptimization: () -> Unit = {},
     val openOem: () -> Unit = {},
     /** Opens Mydroid in Android's Accessibility settings (Instant copy, or to turn a leftover service off). */
     val allowClipboard: () -> Unit = {},
@@ -150,6 +151,7 @@ class MainActivity : ComponentActivity() {
             allowDial = { dialLauncher.launch(Manifest.permission.CALL_PHONE) },
             allowAlerts = { if (Build.VERSION.SDK_INT >= 33) alertLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) },
             openBackgroundSettings = ::openBackgroundSettings,
+            openBatteryOptimization = ::openBatteryOptimization,
             openOem = { m.markOemOpened(); Oem.openAutoStart(this) },
             allowClipboard = ::openAccessibilitySettings,
             setInstantCopy = { m.setInstantCopy(it) },
@@ -341,6 +343,15 @@ class MainActivity : ComponentActivity() {
     private fun openBackgroundSettings() {
         manager().watchFeaturesAfterFix()
         startActivity(Oem.appDetails(this))
+    }
+
+    private fun openBatteryOptimization() {
+        manager().watchFeaturesAfterFix()
+        try {
+            startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+        } catch (_: android.content.ActivityNotFoundException) {
+            startActivity(Oem.appDetails(this))
+        }
     }
 }
 

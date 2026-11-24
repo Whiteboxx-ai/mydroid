@@ -5,6 +5,7 @@ import android.app.ActivityManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.PowerManager
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.mydroid.android.data.Settings
@@ -24,6 +25,7 @@ enum class FeatureState(val wire: String) { On("on"), Off("off"), NeedsPermissio
 data class FeatureReport(
     val states: Map<Feature, FeatureState> = emptyMap(),
     val backgroundRestricted: Boolean = false,
+    val batteryOptimizationExempt: Boolean = false,
     val postNotifications: Boolean = true,
     val photosPartial: Boolean = false,
     val callsMissingOptional: Boolean = false,
@@ -148,6 +150,8 @@ object Features {
             codesFromApps = com.mydroid.android.presence.Presence.isWatch(c),
             bluetoothOn = com.mydroid.android.presence.Presence.bluetoothOn(c),
             backgroundRestricted = Perms.isBackgroundRestricted(c),
+            batteryOptimizationExempt = c.getSystemService(PowerManager::class.java)
+                .isIgnoringBatteryOptimizations(c.packageName),
             postNotifications = Perms.canPostNotifications(c),
             photosPartial = Build.VERSION.SDK_INT >= 34 && s.photos && Perms.hasPhotoAccess(c) && !Perms.hasFullPhotoAccess(c),
             dial = Perms.hasDialAccess(c),
