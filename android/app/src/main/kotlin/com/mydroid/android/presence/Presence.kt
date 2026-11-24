@@ -80,7 +80,7 @@ object Presence {
 
     /** Shows the system picker. [launch] gets the dialog to start (needs one tap from the user). */
     @RequiresApi(31)
-    fun associate(c: Context, launch: (IntentSender) -> Unit, failed: (String) -> Unit, watch: Boolean = false) {
+    fun associate(c: Context, launch: (IntentSender) -> Unit, failed: (String) -> Unit, watch: Boolean, created: () -> Unit) {
         val m = cdm(c) ?: return failed("This phone can't pair nearby")
         val u = uuid(c) ?: return failed("Pair with your Mac first")
         val filter = BluetoothLeDeviceFilter.Builder()
@@ -99,6 +99,7 @@ object Presence {
                 Log.i(TAG, "association created id=${associationInfo.id} watch=${associationInfo.deviceProfile == AssociationRequest.DEVICE_PROFILE_WATCH}")
                 // The system has just committed it, so this is the moment a plain one can be dropped for sure.
                 if (watch) dropPlainSoon(c)
+                created()
             }
             override fun onFailure(error: CharSequence?) { failed("Mac not found. Wake it and try again") }
         }
@@ -162,10 +163,12 @@ object Presence {
     } catch (e: Exception) { 0 }
 
     /** True when an association uses the watch profile (see [associate]). */
-    fun isWatch(c: Context): Boolean = try {
-        Build.VERSION.SDK_INT >= 33 &&
-            cdm(c)?.myAssociations?.any { it.deviceProfile == AssociationRequest.DEVICE_PROFILE_WATCH } == true
-    } catch (e: Exception) { false }
+    fun watchAssociationId(c: Context): Int? = try {
+        if (Build.VERSION.SDK_INT < 33) null else cdm(c)?.myAssociations
+            ?.filter { it.deviceProfile == AssociationRequest.DEVICE_PROFILE_WATCH }?.maxOfOrNull { it.id }
+    } catch (e: Exception) { null }
+
+    fun isWatch(c: Context): Boolean = watchAssociationId(c) != null
 
     fun disassociateAll(c: Context) {
         try {

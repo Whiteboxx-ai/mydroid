@@ -22,6 +22,8 @@ class OtpParserTest {
     @Test fun eightDigits() = assertEquals("12345678", code("Login code: 12345678"))
     @Test fun lowercaseKeyword() = assertEquals("3344", code("otp 3344"))
     @Test fun multiline() = assertEquals("654321", code("Verification\n654321"))
+    @Test fun appCodeFirst() = assertEquals("4821", code("4821 is your Example code"))
+    @Test fun fourDigitsWithExplicitCodeLabel() = assertEquals("2048", code("Your verification code is 2048"))
 
     @Test fun bankAmazon() = assertEquals(
         "739201",
@@ -71,6 +73,10 @@ class OtpParserTest {
     @Test fun promoCode() = assertNull(code("Use code SAVE20 for 20% off your next order"))
     @Test fun promoNumeric() = assertNull(code("Use code 2024 for a discount on your next order"))
     @Test fun noKeyword() = assertNull(code("Meet at 4821 Main Street at 6 pm"))
+    @Test fun technicalStatusIsNotACode() = assertNull(code("Sign in failed. Error code: 2048"))
+    @Test fun referenceNearAccountVerificationIsNotACode() = assertNull(code("Verify your account. Build 2048 is now available."))
+    @Test fun didNotInferACodeFromAnOrderNotice() = assertNull(code("Your order code is 2048"))
+    @Test fun numberInSecurityAlertIsNotACode() = assertNull(code("A new login was detected at 2048 Maple Street"))
     @Test fun keywordNoCode() = assertNull(code("Your OTP has expired. Please request a new one"))
     @Test fun yearFollowedByPunct() = assertNull(code("Verification email sent on 12/2024"))
     @Test fun tooShort() = assertNull(code("Your code is 123"))

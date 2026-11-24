@@ -204,7 +204,9 @@ final class CallAudioController {
         // 1 and 2: Developer options, Wireless debugging, QR code scanned.
         while !Task.isCancelled {
             let services = await adb.mdnsServices()
-            if p.stage == .devOptions, services.contains(where: { $0.isConnect || ($0.isPairing && $0.name == p.service) }) {
+            if p.stage == .devOptions,
+               let phoneHost = hooks.phoneHost(),
+               services.contains(where: { $0.isConnect && $0.host == phoneHost }) {
                 p.stage = .wirelessDebugging
             }
             if let pair = services.first(where: { $0.isPairing && $0.name == p.service }) {
@@ -218,7 +220,7 @@ final class CallAudioController {
                 break
             }
             if p.hint == nil, Date().timeIntervalSince(began) > timing.hintAfter {
-                p.hint = "Nothing yet? Check both are on the same Wi\u{2011}Fi."
+                p.hint = "After scanning, keep Wireless debugging on and both devices on the same Wi\u{2011}Fi."
             }
             try? await Task.sleep(for: timing.setupPoll)
         }

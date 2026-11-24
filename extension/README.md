@@ -18,7 +18,11 @@ Mydroid's native messaging manifest allows this ID and the Chrome Web Store ID, 
 (`NativeMessagingFramingTests.testExtensionIDMatchesManifestKey`) checks that the ID in the Mac app is the one this `key` produces. Don't change the
 `key` without changing `NativeMessaging.extensionID` in `mac/Sources/MydroidNM/NativeMessaging.swift`.
 
-## Install (development, unpacked)
+## Install from the Chrome Web Store
+
+In Mydroid for Mac, open **Settings › Authenticator**, choose **Set up…** next to your browser, then **Open Chrome Web Store**. Add [Mydroid Authenticator](https://chromewebstore.google.com/detail/mydroid-authenticator/nciekoppmimmlhhhcjknedbggbhafoim).
+
+## Install with Developer Mode
 
 Mydroid for Mac does it with you. Open **Settings › Authenticator**, find your browser and press **Set up…**, then **Install with Developer Mode**. A short sheet walks through it: it connects Mydroid to the browser, opens the browser's extensions page,
 shows where **Developer mode** is, and gives you the extension folder as a tile to **drag onto the page** (or **Copy path** / **Show in Finder** if you'd rather use **Load unpacked**). When the extension starts it says
@@ -28,9 +32,6 @@ The extension is copied at every Mydroid launch to a stable folder: `~/Library/A
 
 By hand: build Mydroid (`mac/scripts/build-app.sh`), open it, run **Set up…** for the browser (it writes `com.mydroid.otp.json` into the browser's `NativeMessagingHosts` folder), then in `chrome://extensions` (`edge://`, `brave://`) turn on
 **Developer mode**, choose **Load unpacked** and pick the stable folder. The toolbar popup should say **Connected**.
-
-**For real users** the one-click path is publishing this extension to the **Chrome Web Store** (and **Edge Add-ons**): Chrome blocks self-hosted installs on macOS. The fixed ID below keeps the native messaging manifest valid
-for a store build. Until that exists, the guided Load-unpacked flow is what we have.
 
 ## Website access
 

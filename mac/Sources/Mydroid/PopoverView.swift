@@ -275,7 +275,7 @@ struct FixCard: View {
     }
     private func copy(_ phone: String) -> (String, String) {
         switch kind {
-        case .background: return ("Android paused Mydroid", "Allow background activity on your \(phone).")
+        case .background: return ("Background activity restricted", "Check Battery settings for Mydroid on your \(phone).")
         case .notifications: return ("Notifications are off", "Allow notification access on your \(phone).")
         case .photos: return ("Camera roll needs access", "Allow photo access on your \(phone).")
         case .calls: return ("Call alerts need access", "Allow call access on your \(phone).")

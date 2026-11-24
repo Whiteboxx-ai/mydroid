@@ -54,8 +54,8 @@ internal fun attentionItems(s: UiState, a: Actions, killedAt: Long?, now: Long):
         if (set.smsHistory && r.state(Feature.Sms) != FeatureState.On) add(Attention("sms", "Messages", "Needs message access", "Allow", a.allowSmsHistory))
         if (set.walkAway && r.walkAway == com.mydroid.android.walkaway.WalkAwayStatus.NeedsPermission) add(Attention("walkaway", "Walk-away lock", "Needs Nearby devices", "Allow", a.allowWalkAway))
         when {
-            r.backgroundRestricted -> add(Attention("battery", "Stay connected", "Android may pause Mydroid", "Fix", a.allowBattery))
-            killedAt != null -> add(Attention("oem", "Stay connected", "${Oem.brandName} closed Mydroid ${ago(killedAt, now)}", "Fix", a.openOem))
+            r.backgroundRestricted -> add(Attention("battery", "Stay connected", "Background activity restricted", "Fix", a.openBackgroundSettings))
+            killedAt != null -> add(Attention("oem", "Stay connected", "Mydroid stopped in the background ${ago(killedAt, now)}", "Fix", a.openOem))
         }
     }
 }

@@ -120,6 +120,7 @@ final class RemoteController {
     @ObservationIgnored private weak var hub: Hub?
     @ObservationIgnored private var poll: Timer?
     @ObservationIgnored private var dismissedAt: Date?
+    @ObservationIgnored private var settingsHandoffAt: Date?
     @ObservationIgnored private var observers: [NSObjectProtocol] = []
     @ObservationIgnored private let panel = AccessibilityPromptController()
     @ObservationIgnored let laserOverlay = LaserOverlay()
@@ -178,16 +179,24 @@ final class RemoteController {
     func permissionNeeded(explicit: Bool) {
         recheck()
         guard !trusted else { return }
+        if let start = settingsHandoffAt,
+           Date().timeIntervalSince(start) < 15 || NSWorkspace.shared.frontmostApplication?.bundleIdentifier == "com.apple.systempreferences" {
+            return
+        }
         if !explicit, let d = dismissedAt, Date().timeIntervalSince(d) < 120 { return }
         showCard()
     }
 
-    func showCard() {
+    private func showCard() {
+        guard !cardRequested else { return }
         dismissedAt = nil
         cardRequested = true
-        guard live else { return }
-        panel.show()
-        poll?.invalidate()
+        if live { panel.show() }
+        watchAccessibility()
+    }
+
+    private func watchAccessibility() {
+        guard live, poll == nil else { return }
         poll = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.recheck() }
         }
@@ -206,15 +215,24 @@ final class RemoteController {
     }
 
     func openAccessibilitySettings() {
+        beginSettingsHandoff()
         checker.requestAndOpenSettings()
-        // The pane takes a moment; check again soon so the card closes by itself once the switch is on.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in MainActor.assumeIsolated { self?.recheck() } }
+        recheck()
     }
 
     /// "Already on, still waiting": clear the stale entry and ask again.
     func resetAccessibilityAndAsk() {
+        beginSettingsHandoff()
         checker.resetAndPrompt()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in MainActor.assumeIsolated { self?.recheck() } }
+        recheck()
+    }
+
+    private func beginSettingsHandoff() {
+        settingsHandoffAt = Date()
+        dismissedAt = settingsHandoffAt
+        cardRequested = false
+        if live { panel.hide() }
+        watchAccessibility()
     }
 
     func recheck() {
@@ -224,7 +242,10 @@ final class RemoteController {
             trusted = t
             hub?.setRemoteState(accessibility: t, presenting: presenting)
         }
-        if t, cardRequested { hideCard() }
+        if t {
+            settingsHandoffAt = nil
+            hideCard()
+        }
     }
 
     // MARK: Presenting

@@ -86,7 +86,7 @@ Every header has `"t"`, the message type. Receivers ignore unknown fields and lo
 | `pong` | ↔ | `{}` |
 | `device.status` | P→M | `battery` int 0–100, `charging` bool, `network` `"wifi"`/`"cellular"`/`"none"`, `name`, `model`. Send on connect and whenever battery changes by 1% or more, or charging or network changes. |
 | `settings` | M→P | `notifications`, `photos`, `calls`, `clipboard`, all bool. These are the features the user chose on the Mac. The phone prompts for the matching Android permission in context. |
-| `feature.status` | P→M | For each feature `notifications`, `photos`, `calls`, `clipboard`: `"on"`, `"off"` or `"needs_permission"`. Also `backgroundRestricted` bool (true when battery optimization applies to Mydroid). Send on connect and whenever any value changes. |
+| `feature.status` | P→M | For each feature `notifications`, `photos`, `calls`, `clipboard`: `"on"`, `"off"` or `"needs_permission"`. Also `backgroundActivityRestricted` bool (true when Android reports an app background restriction). Older phones may send `backgroundRestricted` for standard battery optimization. The Mac ignores that legacy field. Send on connect and whenever any value changes. |
 | `fix.open` | M→P | `{"what":"notifications"\|"photos"\|"calls"\|"background"}`. The phone posts a notification that opens the right Android settings screen. |
 | `find.ring` | M→P | `{}`. The phone rings at full volume, even on silent, until the user taps Stop or the Mac sends `find.stop {}`. |
 | `bye` | ↔ | `{}`. Graceful close, for example when the Mac quits. |
@@ -281,7 +281,7 @@ This is an optional feature, never part of the main setup. After setup, the Mac 
 
 1. The Mac uses an existing `adb` installation.
 2. **Developer options:** the Mac sends `fix.open {what:"devoptions"}`. The phone opens Developer options, or About phone with "Tap Build number 7 times" when they're locked.
-3. **QR pairing:** the Mac shows an ADB pairing QR, `WIFI:T:ADB;S:<service>;P:<password>;;`. The user picks **Wireless debugging › Pair device with QR code** and scans it. The Mac finds `_adb-tls-pairing._tcp` with name `<service>`, then runs `adb pair` and `adb connect` (`_adb-tls-connect._tcp`).
+3. **QR pairing:** the Mac shows an ADB pairing QR as soon as setup opens, without waiting for wireless debugging to be discovered. The payload is `WIFI:T:ADB;S:<service>;P:<password>;;`. The user picks **Wireless debugging › Pair device with QR code** and scans it. The Mac finds `_adb-tls-pairing._tcp` with name `<service>`, then runs `adb pair` and `adb connect` (`_adb-tls-connect._tcp`).
 4. **Verify it's the paired phone:** the Mac sends `adb.verify {nonce}` over the Mydroid link. The phone writes the nonce to `/sdcard/Android/data/<package>/files/adb-verify`, and the Mac reads it with `adb shell cat`. The Mac checks `com.whiteboxxai.mydroid` and the legacy `com.mydroid.android` and uses the package that returns the matching nonce.
 5. **Keep-alive grant:** `adb shell pm grant <package> android.permission.WRITE_SECURE_SETTINGS` targets the verified package. The phone then keeps `Settings.Global "adb_wifi_enabled"=1` on boot and on Wi‑Fi connect, while call audio is enabled. On a network Android hasn't trusted yet, Android may ask once.
 6. **Disable:** `adb disconnect`, revoke the grant, and the phone stops the keep-alive. The card explains that Developer options can now be turned off again.
@@ -341,7 +341,7 @@ Input travels over the normal session. Both sides MUST set TCP_NODELAY. The phon
 | `in.media` | P→M | `action`: `playpause`, `next`, `prev`, `volup`, `voldown` or `mute` (system media keys) |
 | `in.laser` | P→M | `on` bool, plus `x` and `y` (0…1, normalised over the main display). The Mac draws a soft red spotlight overlay that ignores mouse events. |
 | `remote.state` | M→P | `accessibility` bool, `presenting`: `{app}` or null. Sent on connect and on change. |
-| `remote.ask` | P→M | `{}`. The phone opened Remote and the Mac lacks Accessibility, so the Mac shows its prompt to allow it. |
+| `remote.ask` | P→M | `{}`. Sent when the phone enters Remote controls that need Accessibility, or when the user asks again. The Mac shows its permission card and watches for the grant. |
 
 **Presenting:**
 - The Mac detects a slideshow: Keynote playing, PowerPoint in slide show, Preview or any app full-screen with "Slideshow" or "Slide Show" in its window title, or Google Slides / PowerPoint Online presenting full-screen in a browser.
@@ -395,7 +395,7 @@ M→P `notif.open {key}`. The phone sends that notification's `contentIntent`.
 | app | default | target |
 |---|---|---|
 | Gmail | web | `https://mail.google.com/mail/u/0/#search/` + `subject:"<subject>"` (the subject is the first line of the text) |
-| WhatsApp | Mac app if installed, else web | `whatsapp://send?phone=<phone>` / `https://web.whatsapp.com/send?phone=<phone>`. With no phone (for example a group), open the app or web home. |
+| WhatsApp | Mac app if installed, else web | `whatsapp://send?phone=<phone>` / `https://web.whatsapp.com/send?phone=<phone>`. With no phone (for example a group), launch the Mac app directly or open the web home. |
 | Telegram | Mac app if installed, else web | `tg://resolve?phone=<phone>` / `https://web.telegram.org/` |
 | X | web | message → `https://x.com/messages`, otherwise `https://x.com/notifications` |
 | Instagram | web | message → `https://www.instagram.com/direct/inbox/`, otherwise `https://www.instagram.com/` |

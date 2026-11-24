@@ -138,6 +138,7 @@ struct ExtensionSetupSheet: View {
         VStack(alignment: .leading, spacing: 12) {
             Button("Open Chrome Web Store") { Task { await setup.openWebStore() } }
                 .buttonStyle(SetupPrimaryButtonStyle())
+                .keyboardShortcut(.defaultAction)
                 .disabled(setup.opening)
             if setup.storeOpened {
                 Text("Add the extension in \(name). Mydroid will connect when it opens.")
@@ -146,13 +147,9 @@ struct ExtensionSetupSheet: View {
                 Text("Couldn’t open \(name).")
                     .font(.callout).foregroundStyle(.secondary)
             }
-            Label("The listing may still be in review.", systemImage: "info.circle")
-                .font(.callout).foregroundStyle(.secondary)
             if setup.developerInstallAvailable {
-                Divider()
                 Button("Install with Developer Mode") { setup.chooseDeveloperInstall(true) }
-                Text("Load the extension bundled with Mydroid.")
-                    .font(.callout).foregroundStyle(.secondary)
+                    .controlSize(.small)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

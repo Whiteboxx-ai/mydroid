@@ -137,7 +137,7 @@ final class OpenRouterTests: XCTestCase {
         let dm = note("com.whatsapp", title: "Maya", text: "hi", message: true)
         XCTAssertEqual(none.action(for: dm), web("https://web.whatsapp.com/"))
         XCTAssertEqual(router("net.whatsapp.WhatsApp").action(for: dm),
-                       .macApp(bundleID: "net.whatsapp.WhatsApp", url: URL(string: "whatsapp://")!, fallback: URL(string: "https://web.whatsapp.com/")))
+                       .macApp(bundleID: "net.whatsapp.WhatsApp", url: nil, fallback: URL(string: "https://web.whatsapp.com/")))
         // A group never opens a one-to-one chat with whoever spoke last.
         let group = note("com.whatsapp", title: "Goa trip", text: "Dev: hi", message: true, phone: "+919876543210", group: true)
         XCTAssertEqual(none.action(for: group), web("https://web.whatsapp.com/"))

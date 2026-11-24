@@ -42,7 +42,7 @@ class Actions(
     val allowSmsHistory: () -> Unit = {},
     val allowDial: () -> Unit = {},
     val allowAlerts: () -> Unit = {},
-    val allowBattery: () -> Unit = {},
+    val openBackgroundSettings: () -> Unit = {},
     val openOem: () -> Unit = {},
     /** Opens Mydroid in Android's Accessibility settings (Instant copy, or to turn a leftover service off). */
     val allowClipboard: () -> Unit = {},
@@ -149,7 +149,7 @@ class MainActivity : ComponentActivity() {
             allowSmsHistory = { smsHistoryLauncher.launch(Perms.smsHistoryPermissions) },
             allowDial = { dialLauncher.launch(Manifest.permission.CALL_PHONE) },
             allowAlerts = { if (Build.VERSION.SDK_INT >= 33) alertLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) },
-            allowBattery = ::requestBattery,
+            openBackgroundSettings = ::openBackgroundSettings,
             openOem = { m.markOemOpened(); Oem.openAutoStart(this) },
             allowClipboard = ::openAccessibilitySettings,
             setInstantCopy = { m.setInstantCopy(it) },
@@ -329,7 +329,8 @@ class MainActivity : ComponentActivity() {
         Presence.associate(this,
             launch = { sender -> runCatching { assocLauncher.launch(IntentSenderRequest.Builder(sender).build()) } },
             failed = { Toast.makeText(this, it, Toast.LENGTH_LONG).show() },
-            watch = watch)
+            watch = watch,
+            created = { manager().refreshPresence(force = true) })
     }
 
     companion object {
@@ -337,15 +338,9 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_BACKUP = "com.mydroid.android.EXTRA_BACKUP"
     }
 
-    private fun requestBattery() {
-        // Some phones (OnePlus) save "Allow" a moment after their dialog closes, so the check in onResume can still
-        // see the old answer. Keep re-checking for a bit so the warning clears on its own.
+    private fun openBackgroundSettings() {
         manager().watchFeaturesAfterFix()
-        try {
-            startActivity(Oem.ignoreBatteryOptimizations(this))
-        } catch (e: Exception) {
-            runCatching { startActivity(Oem.batterySettingsList()) }.onFailure { runCatching { startActivity(Oem.appDetails(this)) } }
-        }
+        startActivity(Oem.appDetails(this))
     }
 }
 

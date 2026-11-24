@@ -329,7 +329,7 @@ final class MediaHandoffTests: XCTestCase {
         let (op, p) = (RecordingOpener(), Probe())
         let r = await handoff(sp, op, p).run(media(id: "spotify:episode:\(id)"))
         XCTAssertEqual(r, .openedInBrowser(why: nil))
-        XCTAssertEqual(op.opened.map(\.url.absoluteString), ["https://open.spotify.com/episode/\(id)"])
+        XCTAssertEqual(op.opened.map { $0.url?.absoluteString }, ["https://open.spotify.com/episode/\(id)"])
         XCTAssertTrue(sp.scripts.isEmpty)
         XCTAssertEqual(p.paused, 1)
     }
@@ -386,7 +386,7 @@ final class MediaHandoffTests: XCTestCase {
         let (sp, op, p) = (RecordingSpotify(), RecordingOpener(), Probe())
         let r = await handoff(sp, op, p).run(media(id: "https://music.example.com/watch?v=1"))
         XCTAssertEqual(r, .openedInBrowser(why: nil))
-        XCTAssertEqual(op.opened.first?.url.absoluteString, "https://music.example.com/watch?v=1")
+        XCTAssertEqual(op.opened.first?.url?.absoluteString, "https://music.example.com/watch?v=1")
         XCTAssertTrue(sp.scripts.isEmpty)
     }
 
@@ -394,7 +394,7 @@ final class MediaHandoffTests: XCTestCase {
         let (sp, op, p) = (RecordingSpotify(), RecordingOpener(), Probe())
         let r = await handoff(sp, op, p).run(media(id: nil))
         XCTAssertEqual(r, .searched)
-        XCTAssertEqual(op.opened.first?.url.absoluteString, "https://www.google.com/search?q=Blinding%20Lights%20The%20Weeknd")
+        XCTAssertEqual(op.opened.first?.url?.absoluteString, "https://www.google.com/search?q=Blinding%20Lights%20The%20Weeknd")
         XCTAssertTrue(sp.scripts.isEmpty)
         XCTAssertEqual(p.paused, 0)
     }

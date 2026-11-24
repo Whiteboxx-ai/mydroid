@@ -8,7 +8,7 @@ Build either app yourself or [install the published builds](/get-started/). Both
 Clone the repository on your Mac.
 
 ```sh
-git clone https://github.com/gautamm20/mydroid.git
+git clone https://github.com/Whiteboxx-ai/mydroid.git
 cd mydroid
 ```
 

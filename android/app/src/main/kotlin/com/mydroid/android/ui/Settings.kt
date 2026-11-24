@@ -185,9 +185,9 @@ private fun settingGroups(
                 }
             }
             add(when {
-                r.backgroundRestricted -> SettingRow(Glyphs.Battery, "Stay connected", "Android may pause Mydroid", Tone.Warn, "Fix", a.allowBattery)
-                killedAt != null -> SettingRow(Glyphs.Battery, "Stay connected", "${Oem.brandName} closed Mydroid ${ago(killedAt, now)}", Tone.Warn, "Fix", a.openOem)
-                else -> SettingRow(Glyphs.Battery, "Stay connected", "Runs in the background", Tone.Ok)
+                r.backgroundRestricted -> SettingRow(Glyphs.Battery, "Stay connected", "Background activity restricted", Tone.Warn, "Fix", a.openBackgroundSettings)
+                killedAt != null -> SettingRow(Glyphs.Battery, "Stay connected", "Mydroid stopped in the background ${ago(killedAt, now)}", Tone.Warn, "Fix", a.openOem)
+                else -> SettingRow(Glyphs.Battery, "Stay connected", "Background activity allowed", Tone.Ok)
             })
             if (!r.backgroundRestricted && autoStartTip && killedAt == null) {
                 add(SettingRow(
@@ -204,12 +204,13 @@ private fun settingGroups(
             add(row(Icons.Default.Notifications, "Notifications", notifOn, "Shown on your Mac", "Needs access", info = if (notifOn) null else Info("Notification access", restricted), run = a.allowNotificationAccess))
             add(row(Icons.Default.Notifications, "Verification codes", r.otp == FeatureState.On, "Shown on your Mac", "Needs permission",
                 info = Info("Verification codes", "Mydroid looks for codes in new texts and never stores them."), run = a.allowSms))
-            if (Build.VERSION.SDK_INT >= 33) {
+            if (Build.VERSION.SDK_INT >= 35) {
                 // Status only; set up through "Your Mac nearby" (same single Bluetooth approval).
                 add(SettingRow(
                     Icons.Default.Notifications, "Codes from apps",
-                    if (r.codesFromApps) "Shown on your Mac" else "Hidden by Android",
+                    if (r.codesFromApps) "Companion paired" else "May be hidden by Android",
                     if (r.codesFromApps) Tone.Ok else Tone.Quiet, if (r.codesFromApps) null else "Set up", a.allowPresence,
+                    info = Info("Codes from apps", "Android can still hide some notifications. Open them on your phone to see the code."),
                 ))
             }
         }))

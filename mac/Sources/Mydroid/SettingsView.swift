@@ -557,14 +557,12 @@ struct StatusRows: View {
         if !s.settings.photos { return RowState(text: "Off", color: .gray) }
         if s.link != .connected { return RowState(text: "Paused", color: .gray) }
         if s.features.photos == .needsPermission { return RowState(text: "Needs permission", color: .orange) }
-        if s.features.backgroundRestricted { return RowState(text: "Paused by Android", color: .orange) }
         return RowState(text: s.photoSyncing ? "Syncing\u{2026}" : "Up to date", color: .green)
     }
     private func notifications(_ s: HubState) -> RowState {
         if !s.settings.notifications { return RowState(text: "Off", color: .gray) }
         if s.link != .connected { return RowState(text: "Paused", color: .gray) }
         if s.features.notifications == .needsPermission { return RowState(text: "Needs permission", color: .orange) }
-        if s.features.backgroundRestricted { return RowState(text: "Paused by Android", color: .orange) }
         return RowState(text: "On", color: .green)
     }
 }

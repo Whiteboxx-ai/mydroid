@@ -58,8 +58,8 @@ object Fixer {
             )
             "background" -> Triple(
                 "Stay connected",
-                "Tap to allow background use",
-                if (!Perms.ignoringBatteryOptimizations(c)) Oem.ignoreBatteryOptimizations(c) else (Oem.autoStartIntent(c) ?: Oem.appDetails(c)),
+                "Tap, then check background activity in Battery settings",
+                Oem.appDetails(c),
             )
             "photos" -> Triple(
                 "Allow photo access",

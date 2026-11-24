@@ -17,4 +17,4 @@ description: Short answers to common questions.
 
 **Which Android versions?** 10 and newer. **Which macOS?** 14 and newer.
 
-**Is the code open?** Yes, on [GitHub](https://github.com/gautamm20/mydroid).
+**Is the code open?** Yes, on [GitHub](https://github.com/Whiteboxx-ai/mydroid).

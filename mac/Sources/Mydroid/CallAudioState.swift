@@ -124,10 +124,10 @@ final class SetupProgress {
     var tier: CallAudioTier? { if case let .result(t) = stage { return t } else { return nil } }
     var failure: String? { if case let .failed(_, m) = stage { return m } else { return nil } }
     var isFinished: Bool { tier != nil }
-    /// The QR code is only useful (and only shown) once Wireless debugging is on.
+    /// Show the QR before discovery so the user can scan as soon as Wireless debugging is on.
     var showsCode: Bool {
         switch stage {
-        case .wirelessDebugging, .pairing: return true
+        case .devOptions, .wirelessDebugging, .pairing: return true
         default: return false
         }
     }
@@ -159,7 +159,7 @@ final class SetupProgress {
         }()
         return [
             SetupItem(id: 0, title: "Developer options",
-                      detail: status(0) == .done ? "On" : (status(0) == .failed ? "Didn\u{2019}t finish" : "Turn it on, then Wireless debugging."),
+                      detail: status(0) == .done ? "On" : (status(0) == .failed ? "Didn\u{2019}t finish" : "On your phone, turn on Wireless debugging."),
                       status: status(0)),
             SetupItem(id: 1, title: "Pair with a QR code",
                       detail: status(1) == .done ? "Scanned" : (status(1) == .failed ? "Didn\u{2019}t finish" : "Tap Pair device with QR code and scan."),

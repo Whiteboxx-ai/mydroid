@@ -263,14 +263,14 @@ private fun buildSteps(s: UiState, a: Actions): List<Step> {
                 "Mydroid listens for your Mac's Bluetooth signal, never your location. Keep your Mac awake and nearby, then pick it." +
                     if (Build.VERSION.SDK_INT >= 33) " Android's dialog calls it a “watch”; that's what lets codes from apps through." else "",
             ), action = a.allowPresence))
-        add(Step("battery", Glyphs.Battery, "Stay connected", "Keep working with the screen off", "Allow", !r.backgroundRestricted, action = a.allowBattery))
+        if (r.backgroundRestricted) add(Step("battery", Glyphs.Battery, "Stay connected", "Allow background activity in Battery settings", "Open settings", false, action = a.openBackgroundSettings))
         // Android can't read OEM auto-start switches, so only ask when there's evidence the OEM
         // actually closed Mydroid since the user last looked. Otherwise it's an optional tip.
         if (!r.backgroundRestricted && Oem.autoStartIntent(ctx) != null) {
             val killedAt = remember(s.oemOpenedAt) { Oem.needsAutoStart(ctx, s.oemOpenedAt) }
             if (killedAt != null) {
                 add(Step("oem", Icons.Default.Settings, "Allow auto-start",
-                    "${Oem.brandName} closed Mydroid ${DateUtils.getRelativeTimeSpanString(killedAt)}",
+                    "Mydroid stopped in the background ${DateUtils.getRelativeTimeSpanString(killedAt)}",
                     "Open settings", done = false, info = Info("Auto-start", "Turn Mydroid on in the ${Oem.brandName} auto-launch list so it stays connected."), action = a.openOem))
             } else if (s.oemOpenedAt == 0L) {
                 add(Step("oem", Icons.Default.Settings, "Auto-start", "Optional",

@@ -66,8 +66,7 @@ internal fun RemoteScreen(
         accessibility == false && (tab == RemoteTab.Pad || tab == RemoteTab.Present) -> Block.Allow
         else -> null
     }
-    // The Mac lacks Accessibility: ask it to show its prompt. Again if the connection came back and it still isn't allowed.
-    LaunchedEffect(connected, accessibility) { if (connected && accessibility == false) api.ask() }
+    LaunchedEffect(block) { if (block == Block.Allow) api.ask() }
 
     val view = LocalView.current
     DisposableEffect(view) {
@@ -114,7 +113,7 @@ internal fun RemoteScreen(
                 RemoteTab.Playing -> PlayingPane(s, api, input, bottom, now)
                 RemoteTab.Open -> OpenPane(s, api, bottom, previewHits)
             }
-            if (block != null) BlockOverlay(block, api, s.mac.remoteAt)
+            if (block != null) BlockOverlay(block, api)
         }
         // Typing needs the room, and a slideshow in progress needs fewer ways to tap something by accident.
         if (!(typing && tab == RemoteTab.Pad)) {
@@ -138,24 +137,10 @@ private fun RemoteTab.glyph() = when (this) {
     RemoteTab.Open -> Glyphs.Apps
 }
 
-/**
- * Calm, not alarming: says what is needed, and clears itself the moment `remote.state` flips. While it waits for the Mac's
- * permission it asks again every few seconds (the Mac checks again each time and brings its card back if it was closed),
- * and after a while says what to do when the switch looks on but nothing changes.
- */
+/** Tells the user what to do while the Mac checks for permission. */
 @Composable
-private fun BlockOverlay(block: Block, api: RemoteApi, answeredAt: Long) {
+private fun BlockOverlay(block: Block, api: RemoteApi) {
     val cs = MaterialTheme.colorScheme
-    var stuck by remember(block) { mutableStateOf(false) }
-    LaunchedEffect(block) {
-        if (block != Block.Allow) return@LaunchedEffect
-        var n = 0
-        while (true) {
-            kotlinx.coroutines.delay(6_000)
-            api.ask()
-            if (++n >= 2) stuck = true
-        }
-    }
     Box(
         Modifier.fillMaxSize().background(cs.background.copy(alpha = 0.94f))
             // Swallow every touch so nothing reaches the pane underneath.
@@ -179,24 +164,6 @@ private fun BlockOverlay(block: Block, api: RemoteApi, answeredAt: Long) {
                 )
                 if (block == Block.Allow) {
                     Spacer(Modifier.height(4.dp))
-                    // What the Mac last said, and how long ago, so "your Mac says no" is never confused with "your Mac isn't answering".
-                    val now by produceState(System.currentTimeMillis()) { while (true) { value = System.currentTimeMillis(); kotlinx.coroutines.delay(1000) } }
-                    val ago = if (answeredAt > 0) ((now - answeredAt) / 1000).coerceAtLeast(0) else null
-                    val silent = ago == null || ago > 15
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Box(Modifier.size(8.dp).clip(CircleShape).background(if (silent) cs.error else cs.tertiary))
-                        Text(
-                            if (silent) "Your Mac isn't answering. Is Mydroid open on it?" else "Your Mac says: not allowed yet · checked ${if (ago!! < 2) "just now" else "$ago s ago"}",
-                            style = MaterialTheme.typography.labelMedium, color = cs.onSurfaceVariant,
-                        )
-                    }
-                    if (!stuck) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.5.dp)
-                    else {
-                        Text(
-                            "Still waiting? If Mydroid is already switched on, click Reset on the card on your Mac. macOS ties the switch to one exact copy of the app.",
-                            style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant, textAlign = TextAlign.Center,
-                        )
-                    }
                     FilledTonalButton({ api.ask() }) { Text("Show it on my Mac again") }
                 }
             }

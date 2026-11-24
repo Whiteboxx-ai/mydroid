@@ -34,7 +34,6 @@ Interop: `simulator smoke --url <PAIR_URL> --state <dir> --photo <file> --photo2
 | RECEIVE_BOOT_COMPLETED | Restart the service after boot and app update |
 | POST_NOTIFICATIONS | Connection note, received files, fix prompts |
 | USE_FULL_SCREEN_INTENT | Find-my-phone Stop screen |
-| REQUEST_IGNORE_BATTERY_OPTIMIZATIONS | Keep the connection alive; see the Play policy note below |
 | READ_MEDIA_IMAGES, READ_MEDIA_VISUAL_USER_SELECTED, READ_EXTERNAL_STORAGE (<=32), ACCESS_MEDIA_LOCATION | Camera roll sync and library browsing (7.7); original bytes with location |
 | READ_PHONE_STATE, READ_CALL_LOG, ANSWER_PHONE_CALLS, READ_CONTACTS | Call state, caller number, answer/decline, contact name, and the call history list (7.8) |
 | READ_SMS, SEND_SMS (+ READ_CONTACTS for names and photos) | "Text from your Mac" (PROTOCOL.md 7.5): list SMS/MMS conversations and messages, and send texts, only when the Mac asks and `settings.smsHistory` is on. Never writes to the SMS provider. Sideloaded builds on Android 13+ may need "Allow restricted settings" first |
@@ -62,7 +61,6 @@ Known limits, candidly:
 - Clipboard phone to Mac is tiered (below): select text then Send to Mac, the notification button, tile and share target need no permission; instant copy via accessibility is an opt-in. Mac to phone is automatic.
 - Partial photo access (Android 14+) works but only already-selected photos are visible; the UI offers "Allow all".
 - Sideloaded builds on Android 13+ need "Allow restricted settings" before notification access can be enabled (the app says so).
-- `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` can be rejected by Play policy for apps not in an exempt category; fine for sideloading.
 - FGS start from a cold boot can be refused by the OS; the notification listener rebind is the backstop.
 - Photos: only `DCIM/` and `Pictures/Screenshot*` images added after pairing (finished files only, `IS_PENDING=0`); photo `xid` uses `DATE_MODIFIED`, so an edited photo re-uploads.
 
@@ -106,7 +104,7 @@ Tests: `:protocol` `auth/OtpTest` (RFC 6238 Appendix B for SHA1/256/512, RFC 422
 - App names: `appLabel()` needs package visibility, so the manifest has a `MAIN/LAUNCHER` `<queries>` intent and `QUERY_ALL_PACKAGES`. Verified on the phone with a real third-party package (label, not package id).
 - `category:"message"` for `MessagingStyle`, `CATEGORY_MESSAGE` and the default SMS app; `conversation` carries the last 5 messages, group flag, title and a <=128 px avatar (group/large icon or last sender's person icon). Avatars are cached per package + conversation, app icons per package.
 - OTPs: `protocol/OtpParser.kt` (JVM-tested, ~60 cases incl. Indian bank formats and negatives for amounts, dates, phones, order numbers, `a/c XX1234`). `G-482196` yields `482196` (single-letter prefix dropped).
-- **Limit found on the real phone (Android 16):** Android 15+ redacts notifications it detects as OTPs for "untrusted" listeners. The text arrives as "Sensitive notification content hidden" (the `RECEIVE_SENSITIVE_NOTIFICATIONS` app-op is `ignore` for us and adb can't flip it). Our own test notifications with a bank-style OTP or "passcode is K7M2QX" were redacted, so `otp` was absent; `MessagingStyle` text and formats the OS doesn't recognise ("Use 12 34 56 to sign in") are not redacted and parse fine. Real SMS OTPs in Google Messages will mostly be redacted. The robust fix is a `RECEIVE_SMS` receiver that feeds the parser (adds a sensitive permission, so it was left out without the user's say-so).
+- Android 15+ can redact notifications containing codes. After the user approves the companion association, Mydroid rebinds its already-enabled notification listener so Android can reevaluate access. If a notification still arrives redacted, its code stays hidden. The `RECEIVE_SMS` receiver can recover codes for the default SMS app or send a separate SMS notification, with the user's SMS permission.
 
 ## Opening notifications from the Mac (PROTOCOL.md 13)
 
@@ -180,7 +178,7 @@ The big battery and reliability win: the connection service no longer runs all d
 - **Lifecycle**: Mac found: service up, connect now. Mac lost and no TCP session for 2 min: `ConnectionService` stops, the supervisor sleeps with no timer, no retries, no NSD. Back on when the Mac is found, a Wi-Fi network appears, the phone is unlocked or the app opens (each gives another 2 min window). Connected means never parked.
 - **Association privileges**: background service start, background data, and `link.open` straight to the browser (screen on and unlocked; otherwise a "Link from your Mac" notification).
 - **Caveat**: a Mac advertises with a rotating private BLE address, so the association's stored MAC goes stale. We never use it (our own UUID scan does the detecting); it only carries the privileges.
-- **Not shipped**: a `DEVICE_PROFILE_WATCH` association. Tested with `cmd companiondevice associate ... android.app.role.COMPANION_DEVICE_WATCH`: it flips `RECEIVE_SENSITIVE_NOTIFICATIONS` to `Uid mode: allow` (plain association stays `ignore`), which would stop Android 16 redacting OTP notifications for us, but it makes Mydroid claim to be a watch and takes the watch role. Left for a decision.
+- **One approval:** Android 13 and later use the watch profile for the companion association. The same association supports nearby detection and can let the notification listener see codes that Android would otherwise hide. Mydroid refreshes the listener after the association is created.
 - **Debug builds only**: `DebugReceiver` (mute list, a synthetic silent media session, media on/off, remove shell test notifications) for testing without the Mac.
 
 ## v1.2 features (PROTOCOL.md 7.2, 7.3, 7.4, 7.9)

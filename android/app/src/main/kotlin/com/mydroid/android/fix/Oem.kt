@@ -69,14 +69,6 @@ object Oem {
         Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", c.packageName, null))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
-    /** The system "let Mydroid run in the background" prompt. */
-    fun ignoreBatteryOptimizations(c: Context): Intent =
-        Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.fromParts("package", c.packageName, null))
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-
-    fun batterySettingsList(): Intent =
-        Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-
     /**
      * Android can't tell us whether an OEM auto-start switch is on. What it can tell us is whether the
      * system killed Mydroid in the background, which is the problem that switch exists to prevent.

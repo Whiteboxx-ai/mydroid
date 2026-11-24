@@ -25,7 +25,6 @@ import java.util.concurrent.TimeUnit
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Base64
 import android.util.LruCache
@@ -44,7 +43,7 @@ class NotifBridge(
     private val send: (Message) -> Boolean,
     private val enabled: () -> Boolean,
 ) {
-    @Volatile var listener: NotificationListenerService? = null
+    @Volatile var listener: MydroidNotificationListener? = null
         set(v) {
             field = v
             mediaProbe.setListener(if (v != null) android.content.ComponentName(ctx, MydroidNotificationListener::class.java) else null)
@@ -121,9 +120,14 @@ class NotifBridge(
             Log.i(TAG, "sms cached len=${body.length} otp=${entry.otp != null}")
             // The notification may already be up (redacted): re-send it with the real text.
             try {
-                listener?.activeNotifications?.forEach { sbn ->
+                val smsPackage = defaultSmsPackage()
+                listener?.activeNotifications?.filter { it.packageName == smsPackage }?.forEach { sbn ->
                     val ex = sbn.notification.extras
-                    if (!skip(sbn) && isRedacted(ex?.getCharSequence(Notification.EXTRA_TEXT))) { lastSent.remove(sbn.key); onPosted(sbn) }
+                    if (!skip(sbn) && (isRedacted(ex?.getCharSequence(Notification.EXTRA_TEXT)) ||
+                            isRedacted(ex?.getCharSequence(Notification.EXTRA_BIG_TEXT)))) {
+                        lastSent.remove(sbn.key)
+                        onPosted(sbn)
+                    }
                 }
             } catch (_: Exception) {
             }
@@ -256,25 +260,30 @@ class NotifBridge(
             }
         }
         if (title.isNullOrBlank() && text.isNullOrBlank()) return null
-        // Redacted OTP notification (or any text from the SMS app): recover the real SMS from the receiver's cache.
+        // Android can redact the short text while leaving a different value in the expanded text.
+        val marker = listOf(text, ex.getCharSequence(Notification.EXTRA_TEXT), ex.getCharSequence(Notification.EXTRA_BIG_TEXT))
+            .firstOrNull(::isRedacted)
+        val redacted = marker != null
         val fromSmsApp = pkg == defaultSmsPackage()
-        val redacted = isRedacted(text)
-        var sms: SmsEntry? = null
-        if (redacted || fromSmsApp) {
-            sms = smsCache.find(listOfNotNull(title, style?.conversationTitle?.toString()), System.currentTimeMillis(), lenient = redacted && fromSmsApp)
-            if (sms != null) {
-                sms.consumed = true
-                if (redacted) text = sms.body
-            }
+        val sms = if (fromSmsApp) {
+            smsCache.find(listOfNotNull(title, style?.conversationTitle?.toString()), System.currentTimeMillis(), lenient = redacted)
+                ?.takeIf { redacted || it.body.trim() == text?.trim() }
+                ?.also { it.consumed = true }
+        } else null
+        if (redacted) {
+            text = sms?.body ?: marker.toString()
+            title = sms?.aliases?.firstOrNull() ?: sms?.address ?: app
         }
-        if (isMessage) conversation = conversationOf(sbn, style, title ?: "", text ?: "", if (redacted) sms?.body else null)
+        if (isMessage && (!redacted || sms != null)) {
+            conversation = conversationOf(sbn, style.takeUnless { redacted }, title ?: "", text ?: "")
+        }
         val reply = replyAction(n)
         val actions = n.actions.orEmpty().withIndex()
             .filter { (_, a) -> a !== reply && !a.title.isNullOrBlank() }
             .map { (i, a) -> buildJsonObject { put("index", i); put("title", a.title.toString()) } }
         // OTP: scan the newest message (or the plain text) plus title. Source = sender / conversation / app.
-        val otp = OtpParser.parse(listOfNotNull(title, text).joinToString("\n"), if (isMessage) (conversation?.get("title")?.jsonPrimitive?.content ?: title ?: app) else app)
-            ?: sms?.otp?.let { com.mydroid.protocol.Otp(it.code, title ?: it.source) }
+        val source = if (isMessage) (conversation?.get("title")?.jsonPrimitive?.content ?: title ?: app) else app
+        val otp = if (redacted) sms?.otp?.copy(source = source) else OtpParser.parse(listOfNotNull(title, text).joinToString("\n"), source)
         return buildJsonObject {
             put("key", sbn.key); put("pkg", pkg); put("app", app)
             put("title", title ?: ""); put("text", text ?: "")
@@ -286,6 +295,7 @@ class NotifBridge(
             conversation?.let { put("conversation", it) }
             if (otp != null) put("otp", buildJsonObject { put("code", otp.code); put("source", otp.source.ifBlank { app }) })
             iconFor(pkg)?.let { put("icon", it) }
+            if (redacted) return@buildJsonObject
             // PROTOCOL.md 13.1: what the Mac needs to open this somewhere useful. All optional.
             val isGroup = style?.isGroupConversation == true
             people.resolve(style, ex, title, isMessage, isGroup)?.let { put("person", NotifFields.person(it.name, it.phone)) }
@@ -298,17 +308,17 @@ class NotifBridge(
         }
     }
 
-    private fun conversationOf(sbn: StatusBarNotification, style: NotificationCompat.MessagingStyle?, title: String, text: String, recoveredBody: String? = null): JsonObject {
+    private fun conversationOf(sbn: StatusBarNotification, style: NotificationCompat.MessagingStyle?, title: String, text: String): JsonObject {
         val n = sbn.notification
         val userKey = style?.user?.key
         val msgs = if (style != null && style.messages.isNotEmpty()) {
             val last5 = style.messages.takeLast(5)
-            last5.mapIndexed { idx, m ->
+            last5.map { m ->
                 val p = m.person
                 val mine = (p == null && m.sender == null) || (userKey != null && p?.key == userKey)
                 val name = (p?.name ?: m.sender)?.toString().orEmpty()
                 val t = m.text?.toString().orEmpty()
-                Triple(if (mine) "" else name, if (recoveredBody != null && idx == last5.size - 1 && isRedacted(t)) recoveredBody else t, m.timestamp)
+                Triple(if (mine) "" else name, t, m.timestamp)
             }
         } else {
             listOf(Triple(title, text, if (n.`when` > 0) n.`when` else sbn.postTime))

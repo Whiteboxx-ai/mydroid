@@ -29,4 +29,4 @@ Run the uninstall line in [Update and remove](/help/update-and-remove/) with `--
 
 ## Questions and reports
 
-Security issues: see [SECURITY.md](https://github.com/gautamm20/mydroid/blob/main/SECURITY.md).
+Security issues: see [SECURITY.md](https://github.com/Whiteboxx-ai/mydroid/blob/main/SECURITY.md).

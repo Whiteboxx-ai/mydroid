@@ -1,10 +1,10 @@
 package com.mydroid.android
 
 import android.Manifest
+import android.app.ActivityManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
-import android.os.PowerManager
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.mydroid.android.data.Settings
@@ -118,8 +118,8 @@ object Perms {
         if (Build.VERSION.SDK_INT >= 33) granted(c, Manifest.permission.POST_NOTIFICATIONS)
         else NotificationManagerCompat.from(c).areNotificationsEnabled()
 
-    fun ignoringBatteryOptimizations(c: Context): Boolean =
-        (c.getSystemService(Context.POWER_SERVICE) as PowerManager).isIgnoringBatteryOptimizations(c.packageName)
+    fun isBackgroundRestricted(c: Context): Boolean =
+        c.getSystemService(ActivityManager::class.java).isBackgroundRestricted
 }
 
 object Features {
@@ -147,7 +147,7 @@ object Features {
             presence = com.mydroid.android.presence.Presence.status(c),
             codesFromApps = com.mydroid.android.presence.Presence.isWatch(c),
             bluetoothOn = com.mydroid.android.presence.Presence.bluetoothOn(c),
-            backgroundRestricted = !Perms.ignoringBatteryOptimizations(c),
+            backgroundRestricted = Perms.isBackgroundRestricted(c),
             postNotifications = Perms.canPostNotifications(c),
             photosPartial = Build.VERSION.SDK_INT >= 34 && s.photos && Perms.hasPhotoAccess(c) && !Perms.hasFullPhotoAccess(c),
             dial = Perms.hasDialAccess(c),

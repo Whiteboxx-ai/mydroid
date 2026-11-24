@@ -159,6 +159,24 @@ final class CallAudioControllerTests: XCTestCase {
 
     // MARK: Setup
 
+    func testSetupShowsCodeBeforeDiscoveringWirelessDebugging() async {
+        let (c, adb, _, env, _) = make()
+        c.beginSetup()
+        let p = c.setup!
+        await until("dev options opened") { env.devOptionsOpened == 1 }
+
+        XCTAssertEqual(p.stage, .devOptions)
+        XCTAssertTrue(p.showsCode)
+        XCTAssertNotNil(QRCode.image(for: p.qrPayload))
+
+        // The scan can be the first service Mydroid discovers on this phone.
+        adb.services = [AdbMdnsService(name: p.service, type: "_adb-tls-pairing._tcp", host: "127.0.0.1", port: 37891)]
+        await until("pair requested") { adb.commands.contains("pair 127.0.0.1:37891") }
+        connectService(adb)
+        await until("setup finished") { p.tier == .full }
+        c.shutdown()
+    }
+
     func testSetupAdvancesByItselfToTheTierResult() async {
         let (c, adb, _, env, _) = make()
         c.beginSetup()

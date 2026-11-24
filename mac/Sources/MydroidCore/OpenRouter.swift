@@ -26,8 +26,8 @@ public enum ClickBehavior: String, Codable, Sendable, CaseIterable, Equatable {
 public enum OpenAction: Equatable, Sendable {
     /// Open this URL in the browser.
     case web(URL)
-    /// Open this URL in the given Mac app. `fallback` is the web page to use when the app can't be launched.
-    case macApp(bundleID: String, url: URL, fallback: URL?)
+    /// Launch the Mac app, optionally with a URL. Use the web fallback if launch fails.
+    case macApp(bundleID: String, url: URL?, fallback: URL?)
     /// Ask the phone to fire the notification's own tap action (`notif.open`).
     case phone(key: String)
     case none
@@ -65,7 +65,7 @@ public struct OpenRule: Sendable, Equatable {
     public enum Target: Sendable, Equatable {
         case web(String)
         /// The first installed app of `bundleIDs` opens `url`. Otherwise (or when it fails) `web` is used.
-        case macApp(bundleIDs: [String], url: String, web: String?)
+        case macApp(bundleIDs: [String], url: String?, web: String?)
         case phone
     }
 
@@ -117,7 +117,7 @@ public struct OpenRule: Sendable, Equatable {
                  summary: "Opens the chat (Mac app, else web)",
                  steps: [Step(.phone, .macApp(bundleIDs: ["net.whatsapp.WhatsApp"], url: "whatsapp://send?phone={phone}",
                                               web: "https://web.whatsapp.com/send?phone={phone}")),
-                         Step(.always, .macApp(bundleIDs: ["net.whatsapp.WhatsApp"], url: "whatsapp://",
+                         Step(.always, .macApp(bundleIDs: ["net.whatsapp.WhatsApp"], url: nil,
                                                web: "https://web.whatsapp.com/"))]),
         OpenRule(id: "telegram", name: "Telegram", packages: ["org.telegram.messenger"],
                  summary: "Opens the chat (Mac app, else web)",
@@ -257,8 +257,12 @@ public struct OpenRouter: Sendable {
                 return (.web(u), u)
             case let .macApp(ids, url, webT):
                 let web = webT.flatMap { Self.expand($0, values) }
-                if let id = ids.first(where: locator.isInstalled(bundleID:)), let u = Self.expand(url, values) {
-                    return (.macApp(bundleID: id, url: u, fallback: web), web)
+                if let id = ids.first(where: locator.isInstalled(bundleID:)) {
+                    if let url {
+                        if let expanded = Self.expand(url, values) { return (.macApp(bundleID: id, url: expanded, fallback: web), web) }
+                    } else {
+                        return (.macApp(bundleID: id, url: nil, fallback: web), web)
+                    }
                 }
                 if let web { return (.web(web), web) }
                 continue

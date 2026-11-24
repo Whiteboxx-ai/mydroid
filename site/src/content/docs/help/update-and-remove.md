@@ -13,7 +13,7 @@ Update both when a release says the protocol changed. Mydroid tells you which si
 ## Remove from your Mac
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/gautamm20/mydroid/main/install.sh | bash -s -- --uninstall
+curl -fsSL https://raw.githubusercontent.com/Whiteboxx-ai/mydroid/main/install.sh | bash -s -- --uninstall
 ```
 
 Add `--purge` to delete your pairing and settings too. Your photos and downloads stay where they are.

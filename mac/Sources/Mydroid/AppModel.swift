@@ -198,7 +198,7 @@ final class AppModel {
         authShortcut = AuthShortcutController(
             broker: hub.auth, browsers: SystemFrontBrowser(), typer: CGEventCodeTyper(), accessibility: remote.checker,
             hud: AuthHUDPanelController(),
-            openAccessibility: { remote.checker.requestAndOpenSettings() },
+            openAccessibility: { remote.openAccessibilitySettings() },
             openAutomation: { SystemFrontBrowser.openAutomationSettings() })
         attachModels()
         if env["MYDROID_LOG"] != nil { hub.log = { FileHandle.standardError.write(Data("[mydroid] \($0)\n".utf8)) } }

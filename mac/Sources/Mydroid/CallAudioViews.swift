@@ -314,46 +314,30 @@ private struct RightPanel: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            switch progress.stage {
-            case .devOptions:
-                placeholder
-            case .wirelessDebugging, .pairing:
+            if progress.showsCode {
                 code
-            case .checking:
+                if progress.stage == .devOptions || progress.stage == .wirelessDebugging {
+                    Button { model.hub.fix(.devoptions) } label: { Label("Reopen on Phone", systemImage: "arrow.up.forward.app") }
+                        .controlSize(.small).buttonStyle(.bordered)
+                }
+                if progress.stage == .devOptions {
+                    Text("No Developer options? Tap Build number 7 times in About phone.")
+                        .font(.system(size: 11)).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            } else if progress.stage == .checking {
                 VStack(spacing: 12) {
                     ProgressView().controlSize(.large)
                     Text("Checking\u{2026}").font(.system(size: 13, weight: .medium)).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 }
                 .frame(width: 220, height: 220)
-            case let .failed(_, message):
+            } else if let message = progress.failure {
                 VStack(spacing: 10) {
                     Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 28)).foregroundStyle(.orange)
                     Text(message).font(.system(size: 13)).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(16).frame(maxWidth: .infinity).background(Color.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            case .result:
-                EmptyView()
             }
-        }
-    }
-
-    private var placeholder: some View {
-        VStack(spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color.primary.opacity(0.05))
-                RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.primary.opacity(0.12), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
-                VStack(spacing: 8) {
-                    Image(systemName: "qrcode").font(.system(size: 34, weight: .light)).foregroundStyle(.tertiary)
-                    Text("Pairing code appears here").font(.system(size: 12)).foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center).padding(.horizontal, 14)
-                }
-            }
-            .frame(width: 220, height: 220)
-            Button { model.hub.fix(.devoptions) } label: { Label("Reopen on Phone", systemImage: "arrow.up.forward.app") }
-                .controlSize(.small).buttonStyle(.bordered)
-            Text("No Developer options? Tap Build number 7 times in About phone.")
-                .font(.system(size: 11)).foregroundStyle(.tertiary).multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -363,6 +347,7 @@ private struct RightPanel: View {
                 RoundedRectangle(cornerRadius: 18, style: .continuous).fill(.white).shadow(color: .black.opacity(0.12), radius: 14, y: 5)
                 if let img = QRCode.image(for: progress.qrPayload) {
                     Image(nsImage: img).interpolation(.none).resizable().scaledToFit().padding(14)
+                        .accessibilityLabel("Wireless debugging pairing QR code")
                 }
             }
             .frame(width: 220, height: 220)

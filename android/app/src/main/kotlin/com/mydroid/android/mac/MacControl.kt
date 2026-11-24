@@ -13,7 +13,6 @@ data class MacUi(
     /** `remote.state`; null until the Mac has said. An older Mac never does, and then nothing is blocked. */
     val remote: RemoteState? = null,
     /** When `remote.state` last arrived (ms since 1970). The Mac repeats it whenever the phone asks, so this says how fresh the answer is. */
-    val remoteAt: Long = 0,
     val status: MacStatus? = null,
     /** The Shortcuts list for the sheet; null until it has loaded. */
     val shortcuts: List<String>? = null,
@@ -72,7 +71,7 @@ class MacControl(
 
     private fun onRemoteState(rs: RemoteState) {
         val before = current().remote?.presenting
-        update { it.copy(remote = rs, remoteAt = System.currentTimeMillis()) }
+        update { it.copy(remote = rs) }
         val p = rs.presenting
         when {
             p == null -> PresenterNotice.cancel(app)

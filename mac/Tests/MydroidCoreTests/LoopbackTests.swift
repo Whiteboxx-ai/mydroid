@@ -135,7 +135,18 @@ final class LoopbackTests: XCTestCase {
         XCTAssertEqual(snap.link, .connected)
         XCTAssertEqual(snap.phone?.battery, 78)
         XCTAssertEqual(snap.phone?.network, .wifi)
+        XCTAssertTrue(snap.fixes.isEmpty, "standard battery optimization does not restrict background activity")
+
+        try await c2.send(Message("feature.status", ["notifications": "on", "photos": "on", "calls": "on", "clipboard": "on", "backgroundActivityRestricted": true]))
+        try await c2.send(Message("ping"))
+        _ = try await c2.receive(type: "pong")
+        snap = hub.snapshot
         XCTAssertEqual(snap.fixes, [.background])
+
+        try await c2.send(Message("feature.status", ["notifications": "on", "photos": "on", "calls": "on", "clipboard": "on", "backgroundActivityRestricted": false]))
+        try await c2.send(Message("ping"))
+        _ = try await c2.receive(type: "pong")
+        XCTAssertTrue(hub.snapshot.fixes.isEmpty)
 
         // --- Notification + reply -------------------------------------------
         try await c2.send(Message("notif.posted", ["key": "k1", "pkg": "com.x", "app": "Messages", "title": "Maya Tan",

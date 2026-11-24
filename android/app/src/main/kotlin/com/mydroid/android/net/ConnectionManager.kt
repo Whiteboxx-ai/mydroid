@@ -334,6 +334,9 @@ class ConnectionManager(private val app: Application) {
      */
     fun refreshPresence(force: Boolean) {
         if (store.isPaired) Presence.dropPlainIfWatch(app)
+        if (store.isPaired && android.os.Build.VERSION.SDK_INT >= 35) {
+            mainHandler.post { notifs.listener?.refreshCompanionAccess() }
+        }
         val now = System.currentTimeMillis()
         val on = store.isPaired && Presence.ready(app)
         val was = presence.isEnabled()
@@ -747,7 +750,7 @@ class ConnectionManager(private val app: Application) {
             for (f in Feature.values()) put(f.wire, r.state(f).wire)
             put("clipboardMode", r.clipboardMode)
             put("otp", r.otp.wire)
-            put("backgroundRestricted", r.backgroundRestricted)
+            put("backgroundActivityRestricted", r.backgroundRestricted)
             put("callAudio", r.callAudio.state.wire)
             put("devOptions", r.callAudio.devOptions)
             put("adbWifi", r.callAudio.adbWifi)

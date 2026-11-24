@@ -9,7 +9,7 @@ export default defineConfig({
       description: 'Your Android phone on your Mac. Free, open source, no account.',
       favicon: '/favicon.svg',
       logo: { src: './src/assets/icon.svg' },
-      social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/gautamm20/mydroid' }],
+      social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/Whiteboxx-ai/mydroid' }],
       customCss: ['./src/styles.css'],
       sidebar: [
         { label: 'Get started', items: [

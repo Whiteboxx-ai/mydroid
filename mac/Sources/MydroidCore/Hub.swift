@@ -514,7 +514,8 @@ public final class Hub: ServerDelegate {
             var f = state.features
             func st(_ k: String) -> FeatureState { m.string(k).flatMap(FeatureState.init(rawValue:)) ?? .unknown }
             f.notifications = st("notifications"); f.photos = st("photos"); f.calls = st("calls"); f.clipboard = st("clipboard")
-            f.backgroundRestricted = m.bool("backgroundRestricted") ?? false
+            // Older phones send "backgroundRestricted" when the app is subject to standard battery optimization.
+            f.backgroundRestricted = m.bool("backgroundActivityRestricted") ?? false
             state.features = f
         case "notif.posted":
             if let n = PhoneNotification(fields: m.fields), !state.settings.mutedApps.contains(n.pkg) {

@@ -14,28 +14,19 @@ import MydroidCore
 // MARK: Accessibility
 
 final class SystemAccessibility: AccessibilityChecking {
-    /// `AXIsProcessTrusted` is the official answer. It has been seen to say no for an ad-hoc signed copy whose switch is on, so when it
-    /// says no we also ask the question that matters: can this process post events? (An active event tap needs the same permission.)
-    var isTrusted: Bool { AXIsProcessTrusted() || Self.canPostEvents() }
+    /// Check posting permission without creating an event tap or requesting input monitoring.
+    var isTrusted: Bool { CGPreflightPostEventAccess() }
 
-    private static func canPostEvents() -> Bool {
-        let mask = CGEventMask(1 << CGEventType.mouseMoved.rawValue)
-        guard let tap = CGEvent.tapCreate(tap: .cgSessionEventTap, place: .headInsertEventTap, options: .defaultTap, eventsOfInterest: mask,
-                                          callback: { _, _, event, _ in Unmanaged.passUnretained(event) }, userInfo: nil) else { return false }
-        CFMachPortInvalidate(tap)
-        return true
-    }
-
-    /// Adds Mydroid to the Accessibility list (the system sheet), and opens Privacy & Security > Accessibility.
-    /// The first call per launch uses the prompt; later calls only open the pane.
+    /// Let the first system prompt open Accessibility. Later clicks go straight to Settings.
     private var prompted = false
     func requestAndOpenSettings() {
+        guard !isTrusted else { return }
         if !prompted {
             prompted = true
-            // "AXTrustedCheckOptionPrompt" is the value of kAXTrustedCheckOptionPrompt.
-            _ = AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary)
+            _ = CGRequestPostEventAccess()
+        } else {
+            Self.openSettings()
         }
-        Self.openSettings()
     }
 
     /// For a permission that is switched on in System Settings but doesn't work: macOS ties it to one exact build of the app, and
@@ -45,8 +36,9 @@ final class SystemAccessibility: AccessibilityChecking {
         p.executableURL = URL(fileURLWithPath: "/usr/bin/tccutil")
         p.arguments = ["reset", "Accessibility", Bundle.main.bundleIdentifier ?? "com.mydroid.mac"]
         p.standardOutput = FileHandle.nullDevice; p.standardError = FileHandle.nullDevice
-        try? p.run()
+        do { try p.run() } catch { Self.openSettings(); return }
         p.waitUntilExit()
+        guard p.terminationStatus == 0 else { Self.openSettings(); return }
         prompted = false
         requestAndOpenSettings()
     }

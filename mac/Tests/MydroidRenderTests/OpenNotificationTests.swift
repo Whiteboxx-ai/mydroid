@@ -36,12 +36,22 @@ final class OpenNotificationTests: XCTestCase {
 
     private func settle() async { try? await Task.sleep(for: .milliseconds(80)) }
 
+    func testWhatsAppWithoutContactNumberLaunchesWithoutAURL() async {
+        let note = chat(phone: nil)
+        let m = model(apps: ["net.whatsapp.WhatsApp"], [note])
+        m.open(note)
+        await settle()
+        XCTAssertEqual(opener.opened.count, 1)
+        XCTAssertEqual(opener.opened.first?.bundleID, "net.whatsapp.WhatsApp")
+        XCTAssertNil(opener.opened.first?.url)
+    }
+
     func testClickOpensTheDefaultForTheApp() async {
         let g = gmail()
         let m = model([g])
         m.open(g)
         await settle()
-        XCTAssertEqual(opener.opened.map(\.url.absoluteString), ["https://mail.google.com/mail/u/0/#search/subject%3A%22Your%20invoice%20is%20ready%22"])
+        XCTAssertEqual(opener.opened.map { $0.url?.absoluteString }, ["https://mail.google.com/mail/u/0/#search/subject%3A%22Your%20invoice%20is%20ready%22"])
         XCTAssertNil(opener.opened.first?.bundleID)
     }
 
@@ -52,12 +62,12 @@ final class OpenNotificationTests: XCTestCase {
         await settle()
         XCTAssertEqual(opener.opened.count, 1)
         XCTAssertEqual(opener.opened[0].bundleID, "net.whatsapp.WhatsApp")
-        XCTAssertEqual(opener.opened[0].url.absoluteString, "whatsapp://send?phone=919876543210")
+        XCTAssertEqual(opener.opened[0].url?.absoluteString, "whatsapp://send?phone=919876543210")
 
         opener.opened = []; opener.failing = ["net.whatsapp.WhatsApp"]
         m.open(w)
         await settle()
-        XCTAssertEqual(opener.opened.map(\.url.absoluteString), ["whatsapp://send?phone=919876543210", "https://web.whatsapp.com/send?phone=919876543210"])
+        XCTAssertEqual(opener.opened.map { $0.url?.absoluteString }, ["whatsapp://send?phone=919876543210", "https://web.whatsapp.com/send?phone=919876543210"])
     }
 
     func testChoicesPerApp() async {
@@ -163,7 +173,7 @@ final class OpenNotificationTests: XCTestCase {
         m.ui.run(.search, g)
         await settle()
         XCTAssertEqual(opener.opened.count, 2)
-        XCTAssertEqual(opener.opened[1].url.absoluteString, "https://www.google.com/search?q=Acme%20Billing%20Your%20invoice%20is%20ready%20Pay%20by%20Friday")
+        XCTAssertEqual(opener.opened[1].url?.absoluteString, "https://www.google.com/search?q=Acme%20Billing%20Your%20invoice%20is%20ready%20Pay%20by%20Friday")
         m.ui.run(.mute, g)
         XCTAssertTrue(m.isMuted(g.pkg) || m.state.settings.mutedApps.contains(g.pkg))
     }

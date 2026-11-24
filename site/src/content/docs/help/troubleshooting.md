@@ -40,4 +40,4 @@ Check the extension shows **Connected** in its toolbar popup, and that Mydroid i
 
 ## Still stuck
 
-[Open an issue](https://github.com/gautamm20/mydroid/issues/new/choose) with your phone, Android version and macOS version.
+[Open an issue](https://github.com/Whiteboxx-ai/mydroid/issues/new/choose) with your phone, Android version and macOS version.
