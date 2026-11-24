@@ -1,12 +1,12 @@
 #!/bin/bash
-# Installs Mydroid on a Mac. Run: curl -fsSL https://raw.githubusercontent.com/gautamm20/mydroid/main/install.sh | bash
+# Installs Mydroid on a Mac. Run: curl -fsSL https://raw.githubusercontent.com/Whiteboxx-ai/mydroid/main/install.sh | bash
 # Options: --version vX.Y.Z   install a specific release
 #          --uninstall        remove the app (add --purge to delete its data too)
 # Test overrides: MYDROID_BASE_URL (folder holding Mydroid-mac.zip and SHA256SUMS), MYDROID_INSTALL_DIR (install there and
 #                 leave any running Mydroid alone), MYDROID_REPO.
 set -euo pipefail
 
-REPO="${MYDROID_REPO:-gautamm20/mydroid}"
+REPO="${MYDROID_REPO:-Whiteboxx-ai/mydroid}"
 VERSION=""
 MODE=install
 PURGE=0

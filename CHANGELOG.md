@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.2
+
+- Install Mydroid Authenticator from the Chrome Web Store. Developer Mode is still available.
+- Call Audio shows its pairing QR code as soon as setup opens.
+- Mydroid on your Mac and phone reports Android background restrictions using the system’s background activity setting.
+- Remote sends one Accessibility request when needed and gives System Settings time to handle it.
+- WhatsApp opens directly when a notification doesn’t identify a contact number.
+- Improved handling of masked app notifications and verification codes on Android.
+- Mydroid now lives in the Whiteboxx GitHub organization.
+
 ## 0.1.1
 
 - The Mac app offers Chrome Web Store and Developer Mode installs for Mydroid Authenticator.

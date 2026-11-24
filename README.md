@@ -12,7 +12,7 @@ It’s free and open source. Your devices connect directly, with no account.
 - **[Install on Android](https://mydroid.whiteboxx.ai/get-started/install-android/)** for Android 10 or later.
 - **[Pair your phone](https://mydroid.whiteboxx.ai/get-started/pair/)** when both apps are open.
 
-[See what it does](https://mydroid.whiteboxx.ai/) · [Download a release](https://github.com/gautamm20/mydroid/releases/latest) · [Get help](https://mydroid.whiteboxx.ai/help/troubleshooting/)
+[See what it does](https://mydroid.whiteboxx.ai/) · [Download a release](https://github.com/Whiteboxx-ai/mydroid/releases/latest) · [Get help](https://mydroid.whiteboxx.ai/help/troubleshooting/)
 
 ## Build it yourself
 
