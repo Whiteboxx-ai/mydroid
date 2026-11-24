@@ -10,6 +10,11 @@ export default defineConfig({
       favicon: '/favicon.svg',
       logo: { src: './src/assets/icon.svg' },
       social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/Whiteboxx-ai/mydroid' }],
+      components: { Head: './src/components/GuideHead.astro' },
+      head: [
+        { tag: 'meta', attrs: { property: 'og:image', content: 'https://mydroid.whiteboxx.ai/screenshots/mydroid-social.jpg' } },
+        { tag: 'meta', attrs: { property: 'og:image:alt', content: 'An Android text conversation open in Mydroid for Mac' } },
+      ],
       customCss: ['./src/styles.css'],
       sidebar: [
         { label: 'Get started', items: [
@@ -17,10 +22,15 @@ export default defineConfig({
           { slug: 'get-started/install-mac' },
           { slug: 'get-started/install-android' },
           { slug: 'get-started/pair' },
+          { slug: 'get-started/walkthrough' },
+          { slug: 'get-started/compatibility' },
           { slug: 'get-started/build-from-source' },
         ] },
         { label: 'Features', items: [
+          { slug: 'features/notifications' },
           { slug: 'features/messages-and-calls' },
+          { slug: 'features/file-transfer' },
+          { slug: 'features/photo-sync' },
           { slug: 'features/photos-and-files' },
           { slug: 'features/clipboard-and-links' },
           { slug: 'features/authenticator' },
@@ -32,6 +42,7 @@ export default defineConfig({
           { slug: 'help/update-and-remove' },
           { slug: 'help/faq' },
         ] },
+        { slug: 'compare/android-to-mac' },
         { slug: 'privacy' },
       ],
     }),

@@ -1,0 +1,13 @@
+# Mydroid
+
+> Mydroid is a free, open-source app by Whiteboxx AI that connects an Android phone and a Mac over local Wi-Fi. It requires macOS 14+ and Android 10+ and needs no account.
+
+- [Setup and official downloads](https://mydroid.whiteboxx.ai/get-started/)
+- [Compatibility](https://mydroid.whiteboxx.ai/get-started/compatibility/)
+- [Notifications](https://mydroid.whiteboxx.ai/features/notifications/)
+- [Texts and calls](https://mydroid.whiteboxx.ai/features/messages-and-calls/)
+- [Wireless file transfer](https://mydroid.whiteboxx.ai/features/file-transfer/)
+- [Camera photo sync](https://mydroid.whiteboxx.ai/features/photo-sync/)
+- [Phone-approved 2FA](https://mydroid.whiteboxx.ai/features/authenticator/)
+- [Privacy](https://mydroid.whiteboxx.ai/privacy/)
+- [Source, license, and releases](https://github.com/Whiteboxx-ai/mydroid)

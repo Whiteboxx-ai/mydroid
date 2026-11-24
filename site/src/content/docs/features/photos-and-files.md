@@ -3,6 +3,8 @@ title: Photos and files
 description: Camera roll sync, phone files on your Mac, Mac folders on your phone.
 ---
 
+[Sync Android photos](/features/photo-sync/) or [send a file over Wi-Fi](/features/file-transfer/).
+
 ## Photos
 
 New photos from your phone's camera roll arrive in **Pictures → Mydroid** on your Mac. Nothing is copied twice, and a dropped connection picks up where it stopped.

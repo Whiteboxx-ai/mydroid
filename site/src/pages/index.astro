@@ -1,7 +1,26 @@
 ---
 import '../home.css';
-const title = 'Mydroid – Your Android phone on your Mac';
-const description = 'Reply to texts, answer calls, and sync photos between Android and Mac. Free, open source, and no account needed.';
+const title = 'Mydroid — Connect Android to Mac over Wi-Fi';
+const description = 'Get Android notifications on your Mac, reply to texts, and move photos and files between devices. Mydroid is free, open source, and needs no account.';
+const canonical = new URL('/', Astro.site).href;
+const shareImage = new URL('/screenshots/mydroid-social.jpg', Astro.site).href;
+const shareAlt = 'An Android text conversation open in Mydroid for Mac';
+const app = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  '@id': `${canonical}#mydroid`,
+  name: 'Mydroid',
+  url: canonical,
+  description,
+  applicationCategory: 'UtilitiesApplication',
+  operatingSystem: ['macOS 14 or later', 'Android 10 or later'],
+  softwareRequirements: 'Install both apps and connect the devices to the same Wi-Fi.',
+  offers: { '@type': 'Offer', price: 0, priceCurrency: 'USD' },
+  publisher: { '@type': 'Organization', '@id': 'https://whiteboxx.ai/#organization', name: 'Whiteboxx AI', url: 'https://whiteboxx.ai/' },
+  screenshot: shareImage,
+  license: 'https://github.com/Whiteboxx-ai/mydroid/blob/main/LICENSE',
+  sameAs: 'https://github.com/Whiteboxx-ai/mydroid',
+};
 ---
 <!doctype html>
 <html lang="en">
@@ -10,10 +29,20 @@ const description = 'Reply to texts, answer calls, and sync photos between Andro
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{title}</title>
   <meta name="description" content={description} />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Mydroid" />
+  <meta property="og:url" content={canonical} />
+  <meta property="og:image" content={shareImage} />
+  <meta property="og:image:width" content="1150" />
+  <meta property="og:image:height" content="739" />
+  <meta property="og:image:alt" content={shareAlt} />
+  <meta name="twitter:card" content="summary_large_image" />
   <meta property="og:title" content={title} />
   <meta property="og:description" content={description} />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <link rel="canonical" href={new URL('/', Astro.site)} />
+  <link rel="canonical" href={canonical} />
+  <script type="application/ld+json" set:html={JSON.stringify(app).replace(/</g, '\\u003c')} />
 </head>
 <body class="surface">
     <header class="site-head">
@@ -32,16 +61,16 @@ const description = 'Reply to texts, answer calls, and sync photos between Andro
     <div class="wrap">
       <section class="hero">
         <h1>Your Android phone on your Mac</h1>
-        <p>Reply to a text, answer a call, or find a photo you just took, all from your Mac. Send files and links in either direction over your own Wi‑Fi.</p>
+        <p>Get Android notifications on your Mac, reply to texts, and move photos and files between devices over your own Wi‑Fi.</p>
         <div class="actions">
           <a class="btn" href="/get-started/install-mac/">Install on Mac</a>
           <a class="btn secondary" href="/get-started/install-android/">Get the Android app</a>
         </div>
-        <p class="requirements">Free and open source. No account needed.</p>
+        <p class="requirements">Free and open source. No account needed. macOS 14+ and Android 10+.</p>
       </section>
       <figure class="hero-image">
-        <img class="hero-mac" src="/screenshots/mac-messages.webp" fetchpriority="high" decoding="async" alt="A text conversation from an Android phone open in Mydroid for Mac">
-        <img class="hero-phone" src="/screenshots/android-home.webp" loading="lazy" decoding="async" alt="The linked Mac and sharing actions in Mydroid for Android">
+        <img class="hero-mac" width="1150" height="739" src="/screenshots/mac-messages.webp" fetchpriority="high" decoding="async" alt="A text conversation from an Android phone open in Mydroid for Mac">
+        <img class="hero-phone" width="420" height="1050" src="/screenshots/android-home.webp" loading="lazy" decoding="async" alt="The linked Mac and sharing actions in Mydroid for Android">
       </figure>
       <nav class="feature-nav" aria-label="Jump to a feature" id="features">
         <a href="#feature-photos">Photos</a>
@@ -59,7 +88,7 @@ const description = 'Reply to texts, answer calls, and sync photos between Andro
         <h2>Find the photo you just took</h2>
         <p>New camera photos show up in Pictures → Mydroid. Open Photos in Mydroid on your Mac when you need an older shot.</p>
         <ul><li>Save original files.</li><li>Import into Apple Photos if you prefer.</li><li>Transfers pick up again when the phone reconnects.</li></ul>
-        <a class="text-link" href="/features/photos-and-files/">Set up photo sync</a>
+        <a class="text-link" href="/features/photo-sync/">Set up photo sync</a>
       </div>
       <figure class="feature-figure">
         <div class="visual"><img class="frame" src="/screenshots/mac-photos.webp" loading="lazy" decoding="async" alt="The Mac photo browser with a camera roll and Save to Pictures selected"></div>
@@ -72,7 +101,7 @@ const description = 'Reply to texts, answer calls, and sync photos between Andro
         <h2>Reply while your phone stays in your pocket</h2>
         <p>Phone notifications appear on your Mac. Reply when the Android app offers it, or dismiss a notification on both devices at once.</p>
         <ul><li>Read and send SMS from the Messages window.</li><li>See app chats as their notifications arrive.</li><li>Mute individual apps or set quiet hours.</li></ul>
-        <a class="text-link" href="/features/messages-and-calls/">Turn on messages and notifications</a>
+        <a class="text-link" href="/features/notifications/">Get Android notifications on your Mac</a>
       </div>
       <figure class="feature-figure">
         <div class="visual blue stack"><img class="frame" src="/screenshots/mac-messages.webp" loading="lazy" decoding="async" alt="The Mydroid Messages window with an SMS conversation"><img src="/screenshots/mac-notification.webp" loading="lazy" decoding="async" alt="An Android Gmail notification on the Mac"></div>
@@ -85,7 +114,7 @@ const description = 'Reply to texts, answer calls, and sync photos between Andro
         <h2>See who’s calling</h2>
         <p>Answer, decline, or start a cellular call from the Mac. With standard setup, you talk and listen on your phone.</p>
         <p>Mac mic and speaker support is an optional setup on compatible phones. It uses Android wireless debugging and your existing adb.</p>
-        <a class="text-link" href="/features/messages-and-calls/#calls">Hear calls on your Mac</a>
+        <a class="text-link" href="/features/messages-and-calls/#calls">See how calls work</a>
       </div>
       <figure class="feature-figure">
         <div class="visual stack"><img src="/screenshots/mac-incoming-call.webp" loading="lazy" decoding="async" alt="An incoming call on the Mac showing the caller and answer controls"><img src="/screenshots/mac-call-audio.webp" loading="lazy" decoding="async" alt="A connected call showing Mac audio controls"></div>
@@ -98,7 +127,7 @@ const description = 'Reply to texts, answer calls, and sync photos between Andro
         <h2>Send a file either way</h2>
         <p>Share a file to Mydroid from Android, or drop it on the menu bar to send it back. Incoming files land in Downloads.</p>
         <ul><li>Receive from Android’s Quick Share menu.</li><li>Open the Mac folders you’ve shared from your phone.</li><li>Choose which folders the phone can write to.</li></ul>
-        <a class="text-link" href="/features/photos-and-files/">Move photos and files</a>
+        <a class="text-link" href="/features/file-transfer/">Transfer files over Wi-Fi</a>
       </div>
       <figure class="feature-figure">
         <div class="visual"><img class="frame" src="/screenshots/mac-files.webp" loading="lazy" decoding="async" alt="The Mac Files window with received files and transfer sizes"></div>
@@ -155,6 +184,6 @@ const description = 'Reply to texts, answer calls, and sync photos between Andro
       <p class="source-install">Want to compile the apps yourself? <a class="text-link" href="/get-started/build-from-source/">Build Mydroid from source</a>.</p>
     </section>
   </main>
-    <footer class="trust-line"><div class="site-footer-inner"><span>Your phone and Mac sync directly, over an encrypted connection.</span><div class="actions"><a href="/privacy/">Privacy</a><a href="https://github.com/Whiteboxx-ai/mydroid">Source on GitHub</a></div></div></footer>
+    <footer class="trust-line"><div class="site-footer-inner"><span>Your phone and Mac sync directly, over an encrypted connection.</span><div class="actions"><a href="/get-started/compatibility/">Compatibility</a><a href="/compare/android-to-mac/">Compare apps</a><a href="/privacy/">Privacy</a><a href="https://whiteboxx.ai/">Whiteboxx AI</a><a href="https://github.com/Whiteboxx-ai/mydroid">Source on GitHub</a></div></div></footer>
 </body>
 </html>

@@ -1,11 +1,11 @@
 ---
-title: Messages and calls
+title: Android texts and calls on your Mac
 description: Notifications, replies, texts and calls on your Mac.
 ---
 
 ## Notifications
 
-Phone notifications appear on your Mac. Reply right from the banner, or dismiss one and it clears on the phone too.
+[Set up Android notifications](/features/notifications/) to see alerts, reply when supported, and dismiss them across both devices.
 
 - **Mute an app** from its banner or in Settings → Notifications.
 - **Quiet hours** hide banners; the list keeps everything.

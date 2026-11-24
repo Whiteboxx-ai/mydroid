@@ -1,5 +1,5 @@
 ---
-title: Authenticator
+title: Fill Chrome 2FA codes from Android
 description: Fill 2FA codes from your phone. The phone approves every fill.
 ---
 

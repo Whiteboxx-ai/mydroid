@@ -1,5 +1,5 @@
 ---
-title: Keep it running
+title: Keep Mydroid connected when Android locks
 description: Stop Android from closing Mydroid in the background.
 ---
 

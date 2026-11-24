@@ -1,0 +1,21 @@
+---
+import Head from '@astrojs/starlight/components/Head.astro';
+
+const { entry } = Astro.locals.starlightRoute;
+const slug = entry.id;
+const canonical = new URL(`/${slug}/`, Astro.site).href;
+const section = slug.split('/')[0];
+const sectionLabel = { 'get-started': 'Get started' }[section];
+const sectionUrl = new URL('/get-started/', Astro.site).href;
+const trail = [{ name: 'Mydroid', item: new URL('/', Astro.site).href }];
+if (sectionLabel && canonical !== sectionUrl) trail.push({ name: sectionLabel, item: sectionUrl });
+trail.push({ name: entry.data.title, item: canonical });
+
+const breadcrumbs = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: trail.map((item, index) => ({ '@type': 'ListItem', position: index + 1, ...item })),
+};
+---
+<Head />
+{slug !== '404' && <script type="application/ld+json" set:html={JSON.stringify(breadcrumbs).replace(/</g, '\u003c')} />}

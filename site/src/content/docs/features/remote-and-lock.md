@@ -1,5 +1,5 @@
 ---
-title: Remote and lock
+title: Use your Android phone as a Mac trackpad and remote
 description: Use the phone as a trackpad, a slide clicker, a music remote and a launcher for your Mac.
 ---
 

@@ -49,8 +49,8 @@ button.text-link { background: none; border: 0; padding: 0; text-decoration: und
 .hero .requirements { font-size: 13px; margin: 12px 0 0; }
 .hero-image { position: relative; width: 100%; aspect-ratio: 1.83; border-radius: 9px; overflow: hidden; background: #dbece5; border: 1px solid #c7ddd2; }
 .hero-image::after { position: absolute; inset: auto 0 0; height: 7%; background: linear-gradient(transparent,#335e4221); content: ""; pointer-events: none; }
-.hero-mac { width: 74%; max-width: none; position: absolute; top: 10%; left: 5.5%; border: 5px solid #294740; border-radius: 10px; box-shadow: 0 13px 37px #2443394a; }
-.hero-phone { width: 19%; position: absolute; right: 6%; top: 16%; border: 5px solid #294740; border-radius: 15px; box-shadow: 0 14px 30px #24433959; }
+.hero-mac { width: 74%; height: auto; max-width: none; position: absolute; top: 10%; left: 5.5%; border: 5px solid #294740; border-radius: 10px; box-shadow: 0 13px 37px #2443394a; }
+.hero-phone { width: 19%; height: auto; position: absolute; right: 6%; top: 16%; border: 5px solid #294740; border-radius: 15px; box-shadow: 0 14px 30px #24433959; }
 .feature-nav { border-block: 1px solid var(--rule); display: flex; flex-wrap: wrap; gap: 9px 19px; margin-top: clamp(36px,6vw,76px); padding-block: 15px; font-size: 13px; }
 .feature-nav a { text-decoration: none; color: var(--secondary-ink); }
 .feature-nav a:hover { text-decoration: underline; color: var(--teal); }
