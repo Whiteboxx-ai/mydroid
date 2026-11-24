@@ -76,7 +76,7 @@ final class CallAudioController {
     @ObservationIgnored var hooks: CallAudioHooks
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private var timing: CallAudioTiming
-    @ObservationIgnored private var serial: String?
+    @ObservationIgnored private var connection: VerifiedAdbConnection?
     @ObservationIgnored private var currentHelper: HelperProcess?
     @ObservationIgnored private var currentLink: AudioLink?
     @ObservationIgnored private var supervisor: Task<Void, Never>?
@@ -226,7 +226,7 @@ final class CallAudioController {
 
         // 3: connect, check it's the right phone, grant the keep-alive.
         p.detail = "Connecting\u{2026}"
-        var connected: String?
+        var connected: VerifiedAdbConnection?
         var lastFailure: ConnectFailure = .connect
         for _ in 0..<timing.connectTries where !Task.isCancelled {
             if let svc = await adb.mdnsServices().first(where: { $0.isConnect && $0.host == host }) {
@@ -241,7 +241,7 @@ final class CallAudioController {
             try? await Task.sleep(for: timing.setupPoll)
         }
         guard !Task.isCancelled else { return }
-        guard let s = connected else {
+        guard let connected else {
             switch lastFailure {
             case .noAnswer:
                 return fail(p, "That isn\u{2019}t your \(p.phoneName). Pair the right phone.")
@@ -252,11 +252,11 @@ final class CallAudioController {
             }
         }
         p.detail = "Allowing Mydroid to keep this on\u{2026}"
-        let grant = await adb.shell(serial: s, HelperProtocol.grantCommand, timeout: 15)
+        let grant = await adb.shell(serial: connected.serial, connected.package.grantCommand, timeout: 15)
         hooks.log("keep-alive grant \(grant.ok ? "accepted" : "refused")")
 
         // Turn it on and let the helper tell us what the phone can do.
-        serial = s
+        connection = connected
         update { $0.enabled = true; $0.keepAliveGranted = grant.ok; $0.lastHost = host; $0.lastConnected = Date(); $0.tier = nil }
         hooks.setPhoneSetting(true)
         adbState = .connected
@@ -287,11 +287,11 @@ final class CallAudioController {
         engine.stop()
         stopMeters()
         route = .phone
-        if let s = serial, await adb.isOnline(serial: s) {
-            _ = await adb.shell(serial: s, HelperProtocol.revokeCommand, timeout: 10)
+        if let connection, await adb.isOnline(serial: connection.serial) {
+            _ = await adb.shell(serial: connection.serial, connection.package.revokeCommand, timeout: 10)
         }
         await adb.disconnect(endpoint: nil)
-        serial = nil
+        connection = nil
         hooks.setPhoneSetting(false)
         adbState = .off
         helperRunning = false
@@ -303,8 +303,13 @@ final class CallAudioController {
 
     enum ConnectFailure: Error, Equatable { case connect, noAnswer, linkDown }
 
+    private struct VerifiedAdbConnection {
+        let serial: String
+        let package: CallAudioAndroidPackage
+    }
+
     /// `adb connect`, then prove it is the phone paired with Mydroid: the phone writes a fresh nonce, and we read it back.
-    private func connectVerified(host: String, port: Int) async -> Result<String, ConnectFailure> {
+    private func connectVerified(host: String, port: Int) async -> Result<VerifiedAdbConnection, ConnectFailure> {
         let endpoint = "\(host):\(port)"
         let r = await adb.connect(endpoint: endpoint)
         guard AdbParsing.connectSucceeded(r.text) else { return .failure(.connect) }
@@ -313,10 +318,13 @@ final class CallAudioController {
         hooks.sendVerify(nonce)
         for _ in 0..<timing.verifyTries {
             try? await Task.sleep(for: timing.verifyStep)
-            if Task.isCancelled { return .failure(.noAnswer) }
-            let f = await adb.shell(serial: endpoint, "cat \(HelperProtocol.verifyPath)", timeout: 8)
-            let got = f.out.trimmingCharacters(in: .whitespacesAndNewlines)
-            if f.ok, got == nonce { return .success(endpoint) }
+            if Task.isCancelled { break }
+            for package in CallAudioAndroidPackage.allCases where !Task.isCancelled {
+                let f = await adb.shell(serial: endpoint, "cat \(package.verifyPath)", timeout: 8)
+                if !Task.isCancelled, f.ok, f.out.trimmingCharacters(in: .whitespacesAndNewlines) == nonce {
+                    return .success(VerifiedAdbConnection(serial: endpoint, package: package))
+                }
+            }
         }
         // Never said yes: don't leave a shell open to a device we couldn't identify.
         await adb.disconnect(endpoint: endpoint)
@@ -351,22 +359,22 @@ final class CallAudioController {
         var reconnect = timing.reconnect
         var helperBackoff = timing.helperRestart
         while !Task.isCancelled, prefs.enabled {
-            if let s = serial {
+            if let connection {
                 adbState = .connected
                 let started = Date()
-                await runHelper(serial: s)
+                await runHelper(connection: connection)
                 if Task.isCancelled { break }
                 if Date().timeIntervalSince(started) > 60 { helperBackoff.reset() }
-                if await adb.isOnline(serial: s) {
+                if await adb.isOnline(serial: connection.serial) {
                     await sleepOrWake(helperBackoff.next())
                     continue
                 }
-                serial = nil
+                self.connection = nil
                 adbState = .searching
             }
             if hooks.linkConnected(), adb.isAvailable {
-                if let s = await reconnectToPhone() {
-                    serial = s; adbState = .connected
+                if let verified = await reconnectToPhone() {
+                    connection = verified; adbState = .connected
                     reconnect.reset(); helperBackoff.reset()
                     update { $0.lastConnected = Date() }
                     continue
@@ -380,7 +388,7 @@ final class CallAudioController {
     }
 
     /// Finds the phone's `_adb-tls-connect` service (its port changes every time wireless debugging toggles) and connects.
-    private func reconnectToPhone() async -> String? {
+    private func reconnectToPhone() async -> VerifiedAdbConnection? {
         guard await adb.ensureServer() else { return nil }
         let known = hooks.phoneHost() ?? prefs.lastHost
         let services = await adb.mdnsServices().filter(\.isConnect)
@@ -397,13 +405,14 @@ final class CallAudioController {
 
     // MARK: Helper session (8.3)
 
-    private func runHelper(serial: String) async {
+    private func runHelper(connection: VerifiedAdbConnection) async {
+        let serial = connection.serial
         let host = serial.split(separator: ":").first.map(String.init) ?? serial
         guard let macHost = LocalAddress.reaching(host: host) else { hooks.log("no route to the phone for audio"); return }
         let key = MydroidCrypto.randomBytes(32)
         guard let link = try? AudioLink(key: key) else { hooks.log("couldn't open the audio socket"); return }
         link.start()
-        let helper = adb.makeHelper(serial: serial)
+        let helper = adb.makeHelper(serial: serial, package: connection.package)
         helper.onLine = { [weak self] line in
             guard let ev = HelperProtocol.parse(line: line) else { return }
             Task { @MainActor in self?.handle(ev) }

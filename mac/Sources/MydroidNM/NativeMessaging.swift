@@ -5,7 +5,9 @@ public enum NativeMessaging {
     public static let hostName = "com.mydroid.otp"
     /// The extension's fixed ID, derived from the `key` in `extension/manifest.json` (a test checks they agree).
     public static let extensionID = "mgcbfndjnaceidpgamoffmgkljhlmheb"
-    public static var allowedOrigin: String { "chrome-extension://\(extensionID)/" }
+    public static let storeExtensionID = "nciekoppmimmlhhhcjknedbggbhafoim"
+    public static let storeURL = URL(string: "https://chromewebstore.google.com/detail/\(storeExtensionID)")!
+    public static let allowedOrigins = [extensionID, storeExtensionID].map { "chrome-extension://\($0)/" }
     /// The most Chrome accepts from a host in one message.
     public static let maxToBrowser = 1 << 20
     /// What this host accepts from the browser (requests are tiny).
@@ -44,7 +46,7 @@ public enum NativeMessaging {
     }
 
     /// Whether Chrome's first argument (the calling origin) is our extension.
-    public static func isAllowed(origin: String?) -> Bool { origin == allowedOrigin }
+    public static func isAllowed(origin: String?) -> Bool { origin.map { allowedOrigins.contains($0) } ?? false }
 }
 
 #if canImport(Darwin)

@@ -44,6 +44,7 @@ final class FakeAdb: AdbControlling, @unchecked Sendable {
     var pairOutput = "Successfully paired to 127.0.0.1:37891 [guid=adb-x]"
     var connectOutput = "connected to 127.0.0.1:41235"
     var verifyReply: () -> String = { "" }
+    var pairedPackage: CallAudioAndroidPackage = .current
     var autoTier: CallAudioTier? = .full
     var answerRoutes = true
     var routeError: String?
@@ -70,11 +71,19 @@ final class FakeAdb: AdbControlling, @unchecked Sendable {
     }
     func shell(serial: String, _ command: String, timeout: TimeInterval) async -> AdbResult {
         commands.append("shell \(command)")
-        if command.hasPrefix("cat ") { return AdbResult(status: 0, out: verifyReply() + "\n", err: "") }
+        if command.hasPrefix("cat ") {
+            let reply = command == "cat \(pairedPackage.verifyPath)" ? verifyReply() : "stale nonce"
+            return AdbResult(status: 0, out: reply + "\n", err: "")
+        }
         return AdbResult(status: 0, out: "", err: "")
     }
     func isOnline(serial: String) async -> Bool { connected.contains(serial) }
-    func makeHelper(serial: String) -> HelperProcess { let h = FakeHelper(adb: self); helpers.append(h); return h }
+    func makeHelper(serial: String, package: CallAudioAndroidPackage) -> HelperProcess {
+        commands.append("helper \(package.rawValue)")
+        let helper = FakeHelper(adb: self)
+        helpers.append(helper)
+        return helper
+    }
     func killServer() { killed = true }
 }
 
@@ -172,7 +181,8 @@ final class CallAudioControllerTests: XCTestCase {
 
         XCTAssertTrue(adb.commands.contains("pair 127.0.0.1:37891"))
         XCTAssertTrue(adb.commands.contains("connect 127.0.0.1:41235"))
-        XCTAssertTrue(adb.commands.contains("shell \(HelperProtocol.grantCommand)"))
+        XCTAssertTrue(adb.commands.contains("shell \(CallAudioAndroidPackage.current.grantCommand)"))
+        XCTAssertTrue(adb.commands.contains("helper \(CallAudioAndroidPackage.current.rawValue)"))
         XCTAssertEqual(env.verifies.count, 1)
         XCTAssertEqual(env.verifies[0].count, 32)
         XCTAssertEqual(env.phoneSetting, [true])
@@ -191,6 +201,27 @@ final class CallAudioControllerTests: XCTestCase {
         c.shutdown()
     }
 
+    func testLegacyAppWithTheMatchingNonceOwnsCallAudio() async {
+        let (c, adb, _, _, _) = make()
+        adb.pairedPackage = .legacy
+        c.beginSetup()
+        let p = c.setup!
+        scan(adb, p)
+        await until("legacy setup") { p.tier == .full }
+
+        let legacy = CallAudioAndroidPackage.legacy
+        let current = CallAudioAndroidPackage.current
+        XCTAssertTrue(adb.commands.contains("shell cat \(current.verifyPath)"))
+        XCTAssertTrue(adb.commands.contains("shell \(legacy.grantCommand)"))
+        XCTAssertTrue(adb.commands.contains("helper \(legacy.rawValue)"))
+        XCTAssertFalse(adb.commands.contains("shell \(current.grantCommand)"))
+        XCTAssertFalse(adb.commands.contains("helper \(current.rawValue)"))
+        c.turnOff()
+        await until("legacy turned off") { !c.enabled }
+        XCTAssertTrue(adb.commands.contains("shell \(legacy.revokeCommand)"))
+        c.shutdown()
+    }
+
     func testAnotherPhoneIsRefusedAndDisconnected() async {
         let (c, adb, _, env, _) = make()
         adb.verifyReply = { "not-our-nonce" }
@@ -204,7 +235,7 @@ final class CallAudioControllerTests: XCTestCase {
         XCTAssertTrue(adb.commands.contains("disconnect 127.0.0.1:41235"), "an unverified device must not stay connected")
         XCTAssertFalse(c.enabled)
         XCTAssertTrue(env.phoneSetting.isEmpty)
-        XCTAssertFalse(adb.commands.contains("shell \(HelperProtocol.grantCommand)"), "no grant for a device we couldn't identify")
+        XCTAssertFalse(adb.commands.contains { $0.hasPrefix("shell pm grant ") }, "no grant for a device we couldn't identify")
     }
 
     func testNoneTierIsExplainedAndEverythingIsUndone() async {
@@ -216,7 +247,7 @@ final class CallAudioControllerTests: XCTestCase {
         await until("result") { p.isFinished }
         XCTAssertEqual(p.tier, CallAudioTier.none)
         await until("undone") { !c.enabled && env.phoneSetting == [true, false] }
-        XCTAssertTrue(adb.commands.contains("shell \(HelperProtocol.revokeCommand)"))
+        XCTAssertTrue(adb.commands.contains("shell \(CallAudioAndroidPackage.current.revokeCommand)"))
         XCTAssertTrue(adb.commands.contains("disconnect all"))
         XCTAssertEqual(c.prefs.tier, CallAudioTier.none)
         XCTAssertFalse(c.showsRouteSwitch)
@@ -456,7 +487,7 @@ final class CallAudioControllerTests: XCTestCase {
         c.turnOff()
         await until("off") { !c.enabled && !c.helperRunning }
         XCTAssertEqual(c.adbState, .off)
-        XCTAssertTrue(adb.commands.contains("shell \(HelperProtocol.revokeCommand)"))
+        XCTAssertTrue(adb.commands.contains("shell \(CallAudioAndroidPackage.current.revokeCommand)"))
         XCTAssertTrue(adb.commands.contains("disconnect all"))
         XCTAssertEqual(env.phoneSetting.last, false)
         XCTAssertFalse(engine.running)

@@ -117,7 +117,7 @@
         <!-- Your Mac in the Files app and system file pickers (PROTOCOL.md 9). Only the system (MANAGE_DOCUMENTS) may bind it. -->
         <provider
             android:name=".files.MacDocumentsProvider"
-            android:authorities="com.mydroid.android.macfiles"
+            android:authorities="${applicationId}.macfiles"
             android:exported="true"
             android:grantUriPermissions="true"
             android:permission="android.permission.MANAGE_DOCUMENTS">

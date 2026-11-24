@@ -8,7 +8,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.mydroid.android"
+        applicationId = "com.whiteboxxai.mydroid"
         minSdk = 29
         // Keep at 36: Android 17 holds OTP SMS for 3 hours for apps targeting API 37+, which would defeat SmsOtpReceiver.
         targetSdk = 36

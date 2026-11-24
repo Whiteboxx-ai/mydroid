@@ -23,7 +23,7 @@ import kotlinx.serialization.json.put
 private const val TAG = "MydroidDebug"
 
 /**
- * Debug builds only (`am broadcast -n com.mydroid.android/.debug.DebugReceiver -a com.mydroid.android.debug.LIB_TEST`).
+ * Debug builds only (`am broadcast -n com.whiteboxxai.mydroid/com.mydroid.android.debug.DebugReceiver -a com.mydroid.android.debug.LIB_TEST`).
  * Runs the PROTOCOL.md 7.5 to 7.8 request handlers locally against the real provider data and logs ONLY counts, byte
  * sizes and timings. It never logs a name, number, message, date, id or any content, and never runs sms.send,
  * call.dial or photos.get.

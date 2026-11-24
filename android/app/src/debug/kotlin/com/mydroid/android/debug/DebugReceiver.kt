@@ -10,7 +10,7 @@ import android.media.session.PlaybackState
 import android.util.Log
 import com.mydroid.android.manager
 
-/** Debug builds only: `am broadcast -n com.mydroid.android/.debug.DebugReceiver -a com.mydroid.android.debug.MUTE --es pkgs com.android.shell`. */
+/** Debug builds only: `am broadcast -n com.whiteboxxai.mydroid/com.mydroid.android.debug.DebugReceiver -a com.mydroid.android.debug.MUTE --es pkgs com.android.shell`. */
 class DebugReceiver : BroadcastReceiver() {
     private companion object { var session: MediaSession? = null }
 
@@ -53,7 +53,7 @@ class DebugReceiver : BroadcastReceiver() {
             Thread({
                 try {
                     val cr = c.contentResolver
-                    val auth = "com.mydroid.android.macfiles"
+                    val auth = com.mydroid.android.files.MacFiles.AUTHORITY
                     val roots = cr.query(android.provider.DocumentsContract.buildRootsUri(auth), null, null, null, null)
                     var mac: String? = null
                     roots?.use { r ->

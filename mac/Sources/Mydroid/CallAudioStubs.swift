@@ -13,7 +13,7 @@ final class StubAdb: AdbControlling {
     func disconnect(endpoint: String?) async {}
     func shell(serial: String, _ command: String, timeout: TimeInterval) async -> AdbResult { AdbResult(status: 1, out: "", err: "") }
     func isOnline(serial: String) async -> Bool { false }
-    func makeHelper(serial: String) -> HelperProcess { NullHelper() }
+    func makeHelper(serial: String, package: CallAudioAndroidPackage) -> HelperProcess { NullHelper() }
     func killServer() {}
 }
 

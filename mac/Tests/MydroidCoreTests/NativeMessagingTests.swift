@@ -34,7 +34,8 @@ final class NativeMessagingFramingTests: XCTestCase {
     }
 
     func testOriginCheck() {
-        XCTAssertTrue(NativeMessaging.isAllowed(origin: NativeMessaging.allowedOrigin))
+        XCTAssertTrue(NativeMessaging.isAllowed(origin: "chrome-extension://\(NativeMessaging.extensionID)/"))
+        XCTAssertTrue(NativeMessaging.isAllowed(origin: "chrome-extension://nciekoppmimmlhhhcjknedbggbhafoim/"))
         XCTAssertFalse(NativeMessaging.isAllowed(origin: "chrome-extension://abcdefghijklmnopabcdefghijklmnop/"))
         XCTAssertFalse(NativeMessaging.isAllowed(origin: nil))
     }
@@ -68,7 +69,10 @@ final class ManifestInstallerTests: XCTestCase {
         XCTAssertEqual(o["name"] as? String, "com.mydroid.otp")
         XCTAssertEqual(o["type"] as? String, "stdio")
         XCTAssertEqual(o["path"] as? String, host)
-        XCTAssertEqual(o["allowed_origins"] as? [String], ["chrome-extension://\(NativeMessaging.extensionID)/"])
+        XCTAssertEqual(o["allowed_origins"] as? [String], [
+            "chrome-extension://\(NativeMessaging.extensionID)/",
+            "chrome-extension://nciekoppmimmlhhhcjknedbggbhafoim/",
+        ])
         XCTAssertNotNil(o["description"] as? String)
     }
 

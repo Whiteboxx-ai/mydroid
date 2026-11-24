@@ -35,7 +35,7 @@ protocol AdbControlling: AnyObject {
     func disconnect(endpoint: String?) async
     func shell(serial: String, _ command: String, timeout: TimeInterval) async -> AdbResult
     func isOnline(serial: String) async -> Bool
-    func makeHelper(serial: String) -> HelperProcess
+    func makeHelper(serial: String, package: CallAudioAndroidPackage) -> HelperProcess
     func killServer()
 }
 
@@ -169,8 +169,8 @@ final class AdbClient: AdbControlling, @unchecked Sendable {
         return r.ok && r.out.trimmingCharacters(in: .whitespacesAndNewlines) == "device"
     }
 
-    func makeHelper(serial: String) -> HelperProcess {
-        let p = makeProcess(["-s", serial, "shell", HelperProtocol.launchCommand])
+    func makeHelper(serial: String, package: CallAudioAndroidPackage) -> HelperProcess {
+        let p = makeProcess(["-s", serial, "shell", package.launchCommand])
         return AdbHelperProcess(process: p)
     }
 

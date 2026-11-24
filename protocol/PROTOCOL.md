@@ -279,17 +279,17 @@ This is an optional feature, never part of the main setup. After setup, the Mac 
 
 ### 8.2 Setup (Mac-driven, one time)
 
-1. The Mac bundles `adb` (`Mydroid.app/Contents/Resources/adb`).
+1. The Mac uses an existing `adb` installation.
 2. **Developer options:** the Mac sends `fix.open {what:"devoptions"}`. The phone opens Developer options, or About phone with "Tap Build number 7 times" when they're locked.
 3. **QR pairing:** the Mac shows an ADB pairing QR, `WIFI:T:ADB;S:<service>;P:<password>;;`. The user picks **Wireless debugging › Pair device with QR code** and scans it. The Mac finds `_adb-tls-pairing._tcp` with name `<service>`, then runs `adb pair` and `adb connect` (`_adb-tls-connect._tcp`).
-4. **Verify it's the paired phone:** the Mac sends `adb.verify {nonce}` over the Mydroid link. The phone writes the nonce to `/sdcard/Android/data/com.mydroid.android/files/adb-verify`, and the Mac reads it with `adb shell cat`.
-5. **Keep-alive grant:** `adb shell pm grant com.mydroid.android android.permission.WRITE_SECURE_SETTINGS`. The phone then keeps `Settings.Global "adb_wifi_enabled"=1` on boot and on Wi‑Fi connect, while call audio is enabled. On a network Android hasn't trusted yet, Android may ask once.
+4. **Verify it's the paired phone:** the Mac sends `adb.verify {nonce}` over the Mydroid link. The phone writes the nonce to `/sdcard/Android/data/<package>/files/adb-verify`, and the Mac reads it with `adb shell cat`. The Mac checks `com.whiteboxxai.mydroid` and the legacy `com.mydroid.android` and uses the package that returns the matching nonce.
+5. **Keep-alive grant:** `adb shell pm grant <package> android.permission.WRITE_SECURE_SETTINGS` targets the verified package. The phone then keeps `Settings.Global "adb_wifi_enabled"=1` on boot and on Wi‑Fi connect, while call audio is enabled. On a network Android hasn't trusted yet, Android may ask once.
 6. **Disable:** `adb disconnect`, revoke the grant, and the phone stops the keep-alive. The card explains that Developer options can now be turned off again.
 
 ### 8.3 The helper
 
 The helper is a class inside the installed APK (`com.mydroid.callbridge.Main`). The Mac starts it as the shell user:
-`adb shell CLASSPATH=$(pm path com.mydroid.android | cut -d: -f2) app_process / com.mydroid.callbridge.Main`.
+`adb shell CLASSPATH=$(pm path <package> | cut -d: -f2) app_process / com.mydroid.callbridge.Main`, using the package verified in §8.2.
 It needs no separate push, and its version always matches the app.
 
 - **Control:** JSON lines over the adb shell's stdin and stdout.
@@ -453,7 +453,7 @@ Google Authenticator's export shows QR codes on the phone and blocks screenshots
   - **Usernames:** remembers the username typed earlier in the same tab (session only).
   - **UI:** shows a small "Fill from phone" chip; it can auto-fill once the user allows that per site.
   - **Filling:** sets the value or the split boxes and dispatches `input` and `change` events.
-  - **Native messaging:** talks to the host `com.mydroid.otp`, a small helper binary inside `Mydroid.app`. Its manifest is installed into each browser's `NativeMessagingHosts` folder, with a fixed extension ID via the manifest `key` for development. The helper relays over a 0600 Unix socket to the running Mydroid app.
+  - **Native messaging:** talks to the host `com.mydroid.otp`, a small helper binary inside `Mydroid.app`. Its manifest is installed into each browser's `NativeMessagingHosts` folder. The manifest and helper allow the fixed unpacked ID derived from the extension manifest's `key` and the Chrome Web Store ID. The helper relays over a 0600 Unix socket to the running Mydroid app.
 - **Global shortcut (⌃⌥C), any browser including Safari:** reads the front browser's URL via AppleScript (Automation permission), requests the code, and types it with CGEvent (Accessibility).
 - **Phishing protection:** a code is filled only when the page's domain is in the entry's `domains`. To link an unknown site, the user must confirm explicitly, with a warning when the domain looks like a known issuer's (lookalike).
 - **Later, with Developer ID signing:** an AuthenticationServices credential provider extension (one-time codes, macOS 15+) for native Safari and app AutoFill.

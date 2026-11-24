@@ -11,7 +11,7 @@ import kotlin.system.exitProcess
 /**
  * Mac call audio helper (PROTOCOL.md 8.3). Not an Android component: a plain class that the Mac starts as the shell user,
  *
- *     adb shell CLASSPATH=$(pm path com.mydroid.android | cut -d: -f2) app_process / com.mydroid.callbridge.Main
+ *     adb shell CLASSPATH=$(pm path com.whiteboxxai.mydroid | cut -d: -f2) app_process / com.mydroid.callbridge.Main
  *
  * JSON lines on stdin and stdout, nothing else on stdout (logs go to stderr). The audio is never stored.
  * Exits on `quit` or when stdin closes (the Mac or adb went away), after releasing every audio resource.

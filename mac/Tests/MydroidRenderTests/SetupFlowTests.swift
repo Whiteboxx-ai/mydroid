@@ -48,6 +48,10 @@ final class SetupFlowTests: XCTestCase {
         s.start()
         XCTAssertEqual(s.current, .openPage)                      // step 1 happened by itself
         XCTAssertEqual(inst.row(.chrome).state, .installed)
+        XCTAssertTrue(s.developerInstallAvailable)
+        XCTAssertFalse(s.developerInstall)
+        s.chooseDeveloperInstall(true)
+        XCTAssertTrue(s.developerInstall)
         s.fixture(step: .devMode)                                  // as if the page was opened
         XCTAssertEqual(s.current, .devMode)
         s.devModeOn()
@@ -98,6 +102,22 @@ final class SetupFlowTests: XCTestCase {
         XCTAssertTrue(again.row(.edge).ready)
         again.remove(.edge)
         XCTAssertFalse(again.row(.edge).ready)
+    }
+
+    func testRelaunchUpdatesAnExistingDeveloperOnlyManifest() throws {
+        let inst = try installer()
+        inst.install(.chrome)
+        inst.markSeen(.chrome)
+        let file = ChromiumBrowser.chrome.manifestURL(home: inst.home)
+        var manifest = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
+        manifest["allowed_origins"] = ["chrome-extension://\(NativeMessaging.extensionID)/"]
+        try JSONSerialization.data(withJSONObject: manifest).write(to: file)
+        XCTAssertEqual(ManifestInstaller.state(.chrome, home: inst.home, hostPath: inst.hostPath), .outdated)
+
+        let again = ExtensionInstaller(home: inst.home, hostPath: inst.hostPath, extensionFolder: nil,
+                                       applicationDirectories: [], defaults: inst.defaults)
+        XCTAssertTrue(again.row(.chrome).ready)
+        XCTAssertEqual(again.row(.edge).state, .notInstalled)
     }
 
     func testTheHelloFromTheSocketReachesTheInstaller() async throws {
@@ -152,15 +172,17 @@ final class SetupFlowTests: XCTestCase {
     func testRenderSetupSheet() throws {
         try XCTSkipIf(dir == nil, "MYDROID_RENDER_DIR not set")
         for scheme in [ColorScheme.light, .dark] {
-            func sheet(_ step: ExtensionSetupModel.Step, fallback: Bool = false, helper: Bool = true, browser: ChromiumBrowser = .chrome) throws -> some View {
+            func sheet(_ step: ExtensionSetupModel.Step, fallback: Bool = false, helper: Bool = true,
+                       browser: ChromiumBrowser = .chrome, developerInstall: Bool = true) throws -> some View {
                 let inst = try installer(helper: helper)
                 let s = ExtensionSetupModel(browser: browser, installer: inst)
                 if step > .connect { inst.install(browser) }
-                s.fixture(step: step, fallback: fallback)
+                s.fixture(step: step, fallback: fallback, developerInstall: developerInstall)
                 if step == .done { inst.markSeen(browser) }
                 return ExtensionSetupSheet(setup: s).environment(\.colorScheme, scheme)
             }
             try write("setup-1-connect", scheme, size: CGSize(width: 480, height: 0), try sheet(.connect, helper: false))
+            try write("setup-install-options", scheme, size: CGSize(width: 480, height: 0), try sheet(.openPage, developerInstall: false))
             try write("setup-2-open", scheme, size: CGSize(width: 480, height: 0), try sheet(.openPage))
             try write("setup-3-developer-mode", scheme, size: CGSize(width: 480, height: 0), try sheet(.devMode))
             try write("setup-3b-after-fallback", scheme, size: CGSize(width: 480, height: 0), try sheet(.devMode, fallback: true))

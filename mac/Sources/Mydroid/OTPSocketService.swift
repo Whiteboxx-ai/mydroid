@@ -102,6 +102,9 @@ final class ExtensionInstaller {
         if let d = defaults.dictionary(forKey: Self.seenKey) as? [String: Double] { seenAt = d.mapValues { Date(timeIntervalSince1970: $0) } }
         syncExtensionFolder()
         refresh()
+        if helperAvailable {
+            for row in rows where row.state == .outdated { install(row.browser) }
+        }
     }
 
     /// Whether the helper is really in the app (it isn't when running from `swift run`).
@@ -162,8 +165,15 @@ final class ExtensionInstaller {
     /// Opens the browser's extensions page in that browser. false when the browser or the address couldn't be opened
     /// (some builds refuse `chrome://` addresses from outside), so the caller can offer the paste fallback.
     func openExtensionsPage(_ b: ChromiumBrowser) async -> Bool {
+        await openPage(b.extensionsPage, in: b)
+    }
+
+    func openWebStore(_ b: ChromiumBrowser) async -> Bool {
+        await openPage(NativeMessaging.storeURL.absoluteString, in: b)
+    }
+
+    private func openPage(_ page: String, in b: ChromiumBrowser) async -> Bool {
         guard let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: b.bundleID) else { return false }
-        let page = b.extensionsPage
         return await Task.detached {
             let p = Process()
             p.executableURL = URL(fileURLWithPath: "/usr/bin/open")

@@ -13,7 +13,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 
 /**
- * Debug-only. `am start -n com.mydroid.android/.debug.ClipTestActivity --ez auto true`:
+ * Debug-only. `am start -n com.whiteboxxai.mydroid/com.mydroid.android.debug.ClipTestActivity --ez auto true`:
  * focuses a text field with the keyboard up, "taps" Copy test text (which emits the accessibility click
  * event the service listens for) and logs whether the keyboard survived. Logs booleans only.
  */

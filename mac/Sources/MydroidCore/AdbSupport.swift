@@ -129,14 +129,22 @@ public enum HelperProtocol {
     }
     public static func route(to: AudioRoute) -> String { line(["cmd": "route", "to": to.rawValue]) }
     public static let quit = line(["cmd": "quit"])
+}
+
+/// Identify the app by its nonce file so the helper targets the paired copy, even when both APKs are installed.
+public enum CallAudioAndroidPackage: String, CaseIterable, Sendable {
+    case current = "com.whiteboxxai.mydroid"
+    case legacy = "com.mydroid.android"
 
     /// The remote shell command that starts the helper (run through `adb shell`, so `$(...)` is evaluated on the phone).
-    public static let launchCommand = "CLASSPATH=$(pm path com.mydroid.android | cut -d: -f2) app_process / com.mydroid.callbridge.Main"
+    public var launchCommand: String {
+        "CLASSPATH=$(pm path \(rawValue) | cut -d: -f2) app_process / com.mydroid.callbridge.Main"
+    }
 
     /// Where the phone writes the nonce for `adb.verify` (8.2.4).
-    public static let verifyPath = "/sdcard/Android/data/com.mydroid.android/files/adb-verify"
-    public static let grantCommand = "pm grant com.mydroid.android android.permission.WRITE_SECURE_SETTINGS"
-    public static let revokeCommand = "pm revoke com.mydroid.android android.permission.WRITE_SECURE_SETTINGS"
+    public var verifyPath: String { "/sdcard/Android/data/\(rawValue)/files/adb-verify" }
+    public var grantCommand: String { "pm grant \(rawValue) android.permission.WRITE_SECURE_SETTINGS" }
+    public var revokeCommand: String { "pm revoke \(rawValue) android.permission.WRITE_SECURE_SETTINGS" }
 }
 
 /// Splits a byte stream into lines (the helper's stdout arrives in arbitrary chunks).

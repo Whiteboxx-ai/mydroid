@@ -14,13 +14,13 @@ The manifest carries a `key`, so the ID is the same on every machine and in ever
 mgcbfndjnaceidpgamoffmgkljhlmheb
 ```
 
-Mydroid's native messaging manifest allows exactly `chrome-extension://mgcbfndjnaceidpgamoffmgkljhlmheb/`. A Swift test
+Mydroid's native messaging manifest allows this ID and the Chrome Web Store ID, `nciekoppmimmlhhhcjknedbggbhafoim`. A Swift test
 (`NativeMessagingFramingTests.testExtensionIDMatchesManifestKey`) checks that the ID in the Mac app is the one this `key` produces. Don't change the
 `key` without changing `NativeMessaging.extensionID` in `mac/Sources/MydroidNM/NativeMessaging.swift`.
 
 ## Install (development, unpacked)
 
-Mydroid for Mac does it with you. Open **Settings › Authenticator**, find your browser and press **Set up…**. A short sheet walks through it: it connects Mydroid to the browser, opens the browser's extensions page,
+Mydroid for Mac does it with you. Open **Settings › Authenticator**, find your browser and press **Set up…**, then **Install with Developer Mode**. A short sheet walks through it: it connects Mydroid to the browser, opens the browser's extensions page,
 shows where **Developer mode** is, and gives you the extension folder as a tile to **drag onto the page** (or **Copy path** / **Show in Finder** if you'd rather use **Load unpacked**). When the extension starts it says
 hello to Mydroid and the sheet turns to "Fill from phone is ready".
 

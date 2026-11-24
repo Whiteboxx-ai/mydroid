@@ -484,14 +484,12 @@ launch, and `set player position` timing). The Android side of `auth.import` and
 - **Stable extension folder.** At every launch `ExtensionInstaller` copies the bundled extension to `~/Library/Application Support/Mydroid/Browser Extension/` (`ExtensionFolder.sync`): created when missing, replaced when the
   bundled `manifest.json` version is newer (or the same version with different files, which helps development builds), never downgraded; `test/` and dotfiles are left out and the manifest is written last. Browsers load
   from there, never from the app bundle or Downloads.
-- **Guided setup sheet** (`ExtensionSetupView.swift`): "Set up Fill from phone in <Browser>", one browser at a time, numbered steps with one short line each. 1 **Connect Mydroid to <Browser>** runs by itself (writes the native
-  messaging manifest). 2 **Open <Browser>'s Extensions page** runs `open -a "<app>" chrome://extensions` (`edge://`, `brave://`; Arc also takes `chrome://`); if that fails it brings the browser forward and copies the address,
-  with "Paste in the address bar (⌘V)". 3 **Turn on "Developer mode"** shows a tiny drawing of the toggle in the page's top-right corner. 4 **Add Mydroid** offers a **draggable folder tile** (an `NSItemProvider` of the stable
-  folder's file URL: drop it on the Extensions page) or, as the fallback, "click Load unpacked, press ⌘⇧G and paste" with **Copy path** and **Show in Finder**. 5 is automatic: the extension sends `hello` through native messaging
+- **Guided setup sheet** (`ExtensionSetupView.swift`): writes the browser's native messaging manifest, then offers **Open Chrome Web Store** and **Install with Developer Mode**. The store opens in the selected browser.
+  Developer Mode opens the browser's Extensions page, or copies its address if opening fails. Turn on **Developer mode** and drag the bundled folder onto the page, or use **Load unpacked** with **Copy Path**.
+  Either copy sends `hello` through native messaging
   on install and on browser start, `OTPBridge` hands it to `OTPSocketService`, and `ExtensionInstaller.markSeen` flips the sheet to "Fill from phone is ready in <Browser> ✓". Which browser said hello comes from the helper's parent process
   (`ChromiumBrowser.from(executablePath:)`, so Arc isn't taken for Chrome), then from the name the extension reports. A hello never launches Mydroid. "Ready" is remembered (`extensionSeen` in the app's defaults) and shown in Settings.
-  Chrome blocks self-hosted extension installs on macOS, so a dev-mode "Load unpacked" is the best a self-distributed app can do. **The real one-click path for end users is publishing the extension to the Chrome Web Store (and Edge Add-ons);
-  the fixed extension ID keeps the native messaging manifest valid there too.** Until then this guided flow stays.
+  The native messaging helper and its browser manifests allow the unpacked and Chrome Web Store IDs.
 - **Compact HUD.** The ⌃⌥C panel is 340 pt wide with a short title and at most one short line per state ("Approve on your phone…", "Filled ✓", "Denied", "Timed out", "No account for <site>").
 - **Tests and renders.** `ExtensionSetupTests` (Core: folder sync, version order, browser detection, the `hello` op) and `SetupFlowTests` (the setup model and its steps, hello flow, mirrored preview, and renders): `MYDROID_RENDER_DIR=<dir> swift test --filter SetupFlowTests`
   writes `setup-*` (each step, the paste fallback, done), `settings-authenticator-browsers` and `popover-header-gear-*`. Every home in these tests is a temporary folder; no real browser profile is touched.

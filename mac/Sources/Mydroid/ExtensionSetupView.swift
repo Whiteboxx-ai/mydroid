@@ -19,6 +19,9 @@ final class ExtensionSetupModel {
     private(set) var devModeDone = false
     private(set) var copiedPath = false
     private(set) var opening = false
+    private(set) var developerInstall = false
+    private(set) var storeOpened = false
+    private(set) var storeOpenFailed = false
     /// Set to run the steps again for a browser that was already working.
     private(set) var again = false
     private let startedAt = Date()
@@ -31,6 +34,7 @@ final class ExtensionSetupModel {
     }
 
     var helperAvailable: Bool { installer.helperAvailable }
+    var developerInstallAvailable: Bool { installer.extensionFolder != nil }
     var connected: Bool { installer.row(browser).state == .installed }
     var folder: URL { installer.stableFolder }
 
@@ -50,7 +54,26 @@ final class ExtensionSetupModel {
     /// Step 1 runs by itself.
     func start() { if !connected && helperAvailable { installer.install(browser) } }
 
-    func setUpAgain() { again = true; openedPage = false; devModeDone = false; pasteFallback = false; start() }
+    func setUpAgain() {
+        again = true
+        developerInstall = false
+        storeOpened = false
+        storeOpenFailed = false
+        openedPage = false
+        devModeDone = false
+        pasteFallback = false
+        start()
+    }
+
+    func chooseDeveloperInstall(_ useDeveloperInstall: Bool) { developerInstall = useDeveloperInstall }
+
+    func openWebStore() async {
+        guard !opening else { return }
+        opening = true
+        storeOpened = await installer.openWebStore(browser)
+        storeOpenFailed = !storeOpened
+        opening = false
+    }
 
     func openPage() async {
         guard !opening else { return }
@@ -71,7 +94,8 @@ final class ExtensionSetupModel {
     func devModeOn() { devModeDone = true }
 
     /// For renders: puts the sheet at a step without doing anything.
-    func fixture(step: Step, fallback: Bool = false) {
+    func fixture(step: Step, fallback: Bool = false, developerInstall: Bool = true) {
+        self.developerInstall = developerInstall
         openedPage = step > .openPage; devModeDone = step > .devMode
         pasteFallback = fallback && step > .openPage
     }
@@ -93,11 +117,45 @@ struct ExtensionSetupSheet: View {
             }
             .padding(.bottom, 16)
 
-            if setup.ready { ReadyPanel(setup: setup, onDone: { dismiss() }) } else { steps }
+            if setup.ready {
+                ReadyPanel(setup: setup, onDone: { dismiss() })
+            } else if setup.developerInstall || !setup.connected {
+                steps
+                if setup.connected {
+                    Button("Back to Install Options") { setup.chooseDeveloperInstall(false) }
+                        .padding(.top, 12)
+                }
+            } else {
+                installOptions
+            }
         }
         .padding(22)
         .frame(width: 480)
         .task { setup.start() }
+    }
+
+    private var installOptions: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button("Open Chrome Web Store") { Task { await setup.openWebStore() } }
+                .buttonStyle(SetupPrimaryButtonStyle())
+                .disabled(setup.opening)
+            if setup.storeOpened {
+                Text("Add the extension in \(name). Mydroid will connect when it opens.")
+                    .font(.callout).foregroundStyle(.secondary)
+            } else if setup.storeOpenFailed {
+                Text("Couldn’t open \(name).")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+            Label("The listing may still be in review.", systemImage: "info.circle")
+                .font(.callout).foregroundStyle(.secondary)
+            if setup.developerInstallAvailable {
+                Divider()
+                Button("Install with Developer Mode") { setup.chooseDeveloperInstall(true) }
+                Text("Load the extension bundled with Mydroid.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var steps: some View {

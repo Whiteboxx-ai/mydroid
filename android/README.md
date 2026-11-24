@@ -23,7 +23,7 @@ Interop: `simulator smoke --url <PAIR_URL> --state <dir> --photo <file> --photo2
 
 - `:protocol` pure JVM. `Crypto.kt` (HKDF on `javax.crypto.Mac`, AES-GCM), `Codec.kt` (framing, message codec), `Net.kt` (hello handshake, `SecureChannel`, QR URL parsing), `Session.kt` (`ClientSession` state machine, heartbeat, `CandidateRacer`, `Backoff`), `Transfer.kt` (send with resume, receive with `.part`, sha256, `Ledger`/`IncomingStore`/`FileSource` interfaces).
 - `:simulator` smoke client using the same `:protocol` paths as the app, plus a fake-server test.
-- `:app` (`com.mydroid.android`): `net/` (ConnectionManager, Discovery, foreground service), `notif/`, `photos/`, `calls/`, `clip/`, `files/` (incoming files, and the Mac's folders in the Files app), `find/`, `fix/`, `boot/`, `callaudio/` (setup status, keep-alive, `adb.verify`), `ui/` (Compose, Material 3, dynamic color). `com.mydroid.callbridge` is the shell-run call audio helper (below); its logic lives in `:protocol` (`CallAudio.kt`, `CallBridge.kt`).
+- `:app` (`com.whiteboxxai.mydroid`): `net/` (ConnectionManager, Discovery, foreground service), `notif/`, `photos/`, `calls/`, `clip/`, `files/` (incoming files, and the Mac's folders in the Files app), `find/`, `fix/`, `boot/`, `callaudio/` (setup status, keep-alive, `adb.verify`), `ui/` (Compose, Material 3, dynamic color). `com.mydroid.callbridge` is the shell-run call audio helper (below); its logic lives in `:protocol` (`CallAudio.kt`, `CallBridge.kt`).
 
 ## Permissions and why
 
@@ -118,7 +118,7 @@ Tests: `:protocol` `auth/OtpTest` (RFC 6238 Appendix B for SHA1/256/512, RFC 422
 
 **The Spotify check** (`notif/MediaIdProbe.kt`). Does Spotify's session expose a track id? Whenever `com.spotify.music` posts or updates a media notification, or its session's metadata changes (its own session listener, independent of the Now playing setting), one line goes to logcat under tag `Mydroid`:
 `spotify-mediaid present=<bool> scheme=<spotify:track|spotify:episode|http|other|none> field=<MEDIA_ID|MEDIA_URI|none>`
-`present` means an id the Mac may use. `scheme`/`field` describe what Spotify gave even when it isn't usable (`present=false scheme=other` means an id exists but not in a public form). Never the id, title or artist. To run it: play a song in Spotify and `adb logcat -s Mydroid`. Debug builds: `am broadcast -n com.mydroid.android/.debug.DebugReceiver -a com.mydroid.android.debug.SPOTIFY_CHECK` probes the live Spotify session now and logs the last result.
+`present` means an id the Mac may use. `scheme`/`field` describe what Spotify gave even when it isn't usable (`present=false scheme=other` means an id exists but not in a public form). Never the id, title or artist. To run it: play a song in Spotify and `adb logcat -s Mydroid`. Debug builds: `am broadcast -n com.whiteboxxai.mydroid/com.mydroid.android.debug.DebugReceiver -a com.mydroid.android.debug.SPOTIFY_CHECK` probes the live Spotify session now and logs the last result.
 
 **`notif.open {key}`** (`NotifBridge.open`, `NotifOpener`, on the notification worker). Sends the active notification's `contentIntent` with the `ActivityOptions` background-start mode `ALLOWED` on Android 14+ (the companion association is what permits it). The `PendingIntent.OnFinished` result tells a started activity (0..3) from an aborted or failed one; no verdict in 4 s counts as sent. On `CanceledException` or a refused start it posts a high-priority "Tap to open in <App>" (channel *Opening from your Mac*) carrying the same `PendingIntent`, removed after 2 minutes, and replies `ok:false`. If the notification is gone it launches the app (`getLaunchIntentForPackage`) and replies `ok:true, note:"launched app"`. A notification with no `contentIntent` takes the same launch path. Reply: `notif.result {key, ok, error?, note?}`. Logs the outcome only (`notif.open ok= via= why= code=`).
 - Debug builds: `DebugReceiver` actions `NOTIF_OPEN` (`--es key <sbn key>` or `--es tag <t> [--es pkg <p>]`) and `NOTIF_OPEN_TEST [--ez cancel true]`, which posts Mydroid's own test notification (tap target `OpenTestActivity`, or a cancelled PendingIntent to exercise the fallback) and runs the same handler. Results go to `MydroidDebug`/`MydroidNotif` logs.
@@ -210,7 +210,7 @@ All four are request/response: the Mac asks, a worker thread answers. `net/Reque
 
 ## Your Mac in Files (PROTOCOL.md section 9)
 
-The Mac's shared folders show up in Android's own Files app and in every system file picker, as one root named after the Mac ("via Mydroid", laptop icon). Code: `:protocol/Fs.kt` (codec, request client, browser cache, file cache, JVM-tested in `FsTest.kt`), `files/MacFiles.kt` (service owned by `ConnectionManager`), `files/MacDocumentsProvider.kt` (thin `DocumentsProvider`, authority `com.mydroid.android.macfiles`, permission `MANAGE_DOCUMENTS`, so only the system can bind it).
+The Mac's shared folders show up in Android's own Files app and in every system file picker, as one root named after the Mac ("via Mydroid", laptop icon). Code: `:protocol/Fs.kt` (codec, request client, browser cache, file cache, JVM-tested in `FsTest.kt`), `files/MacFiles.kt` (service owned by `ConnectionManager`), `files/MacDocumentsProvider.kt` (thin `DocumentsProvider`, authority `com.whiteboxxai.mydroid.macfiles`, permission `MANAGE_DOCUMENTS`, so only the system can bind it).
 
 - **Roots.** One row while paired: flags `SUPPORTS_SEARCH | SUPPORTS_RECENTS | SUPPORTS_IS_CHILD`, plus `SUPPORTS_CREATE` when any share is writable (last answer kept in `Store.fsWritable`, so the flags don't flicker offline). The root is **not** hidden when the Mac is away, only when the Mac answered `fs.roots` with an empty list (sharing off). `notifyChange` on the roots URI fires on connect, disconnect, unpair and every `fs.roots` answer.
 - **Document ids** (`FsDocId`): `<macId>` is the root, `<macId>:<share>` a shared folder, `<macId>:<share>/a/b` anything inside. `/` and `%` in a share id are escaped; ids with empty, `.` or `..` segments are refused.
@@ -232,7 +232,7 @@ Optional, never part of onboarding. The phone side has three small pieces; pairi
 **Helper `com.mydroid.callbridge.Main`** (`app/.../callbridge/`, logic in `:protocol/CallBridge.kt`). A plain class compiled into the APK; the Mac runs it as the shell user:
 
 ```
-adb shell 'CLASSPATH=$(pm path com.mydroid.android | cut -d: -f2) app_process / com.mydroid.callbridge.Main'
+adb shell 'CLASSPATH=$(pm path com.whiteboxxai.mydroid | cut -d: -f2) app_process / com.mydroid.callbridge.Main'
 ```
 
 - stdin/stdout are JSON lines and nothing else goes to stdout (`System.out` is pointed at stderr). Exits on `quit` or stdin EOF after releasing everything; any other failure becomes an event, not an exit. The Mac should use adb's shell protocol v2 so stderr stays separate (and ignore non-JSON lines).

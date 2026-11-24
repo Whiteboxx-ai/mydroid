@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1
+
+- The Mac app offers Chrome Web Store and Developer Mode installs for Mydroid Authenticator.
+- The signed Android download uses `com.whiteboxxai.mydroid`.
+
 ## 0.1.0
 
 - Remote is rebuilt around four tabs: Pad (edge scroll, click buttons, three-finger swipes, typing view, settings), Present (deck picker, slide number and notes, laser), Playing (Music and Spotify with cover art and volume) and Open (apps and files on your Mac).

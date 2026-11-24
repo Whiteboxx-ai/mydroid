@@ -11,6 +11,7 @@ import android.provider.DocumentsContract
 import android.util.Log
 import android.webkit.MimeTypeMap
 import androidx.core.app.NotificationCompat
+import com.mydroid.android.BuildConfig
 import com.mydroid.android.Channels
 import com.mydroid.android.Perms
 import com.mydroid.android.R
@@ -374,7 +375,7 @@ class MacFiles(
     }
 
     companion object {
-        const val AUTHORITY = "com.mydroid.android.macfiles"
+        const val AUTHORITY = BuildConfig.APPLICATION_ID + ".macfiles"
         const val CACHE_CAP = 1L shl 30
         const val THUMB_CAP = 64L shl 20
         const val START_MS = 30_000L

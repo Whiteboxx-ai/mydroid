@@ -90,14 +90,14 @@ public enum ChromiumBrowser: String, CaseIterable, Sendable, Identifiable {
 }
 
 public enum HostManifest {
-    /// The manifest Chrome reads: the helper's absolute path and the one extension allowed to start it.
-    public static func data(hostPath: String, extensionID: String = NativeMessaging.extensionID) -> Data {
+    /// The manifest Chrome reads: the helper's absolute path and both Mydroid extension origins.
+    public static func data(hostPath: String) -> Data {
         let obj: [String: Any] = [
             "name": NativeMessaging.hostName,
             "description": "Mydroid: 2FA codes from your phone",
             "path": hostPath,
             "type": "stdio",
-            "allowed_origins": ["chrome-extension://\(extensionID)/"],
+            "allowed_origins": NativeMessaging.allowedOrigins,
         ]
         return (try? JSONSerialization.data(withJSONObject: obj, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])) ?? Data()
     }
@@ -143,6 +143,6 @@ public enum ManifestInstaller {
         guard let o = try? JSONSerialization.jsonObject(with: d) as? [String: Any],
               o["name"] as? String == NativeMessaging.hostName else { return .outdated }
         let origins = o["allowed_origins"] as? [String] ?? []
-        return o["path"] as? String == hostPath && origins == [NativeMessaging.allowedOrigin] ? .installed : .outdated
+        return o["path"] as? String == hostPath && origins == NativeMessaging.allowedOrigins ? .installed : .outdated
     }
 }
