@@ -29,7 +29,8 @@ if [ -z "${MYDROID_KEYSTORE:-}" ]; then
     printf '%s' "$pw" > "$KEYDIR/password"; chmod 600 "$KEYDIR/password"
     echo "Created a new Android signing key in $KEYDIR. Back it up now."
   fi
-  export MYDROID_KEYSTORE_PASSWORD="$(cat "$KEYDIR/password")"
+  MYDROID_KEYSTORE_PASSWORD="$(cat "$KEYDIR/password")"
+  export MYDROID_KEYSTORE_PASSWORD
 fi
 
 rm -rf "$DIST"; mkdir -p "$DIST"

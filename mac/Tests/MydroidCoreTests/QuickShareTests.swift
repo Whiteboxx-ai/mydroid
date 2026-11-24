@@ -874,7 +874,7 @@ final class QSConnectionTests: XCTestCase {
         let p = MemoryPipe(); accepting(p)
         let s = QSTestSender(p)
         try s.handshake(name: "Pixel 9")
-        try s.introduce(texts: [.init(title: "t", type: .text, payloadId: 1, size: 100 * 1024 * 1024)])
+        try s.introduce(texts: [.init(title: "t", type: .text, payloadId: 1, size: Int64(100 * 1024 * 1024))])
         XCTAssertEqual(try s.nextSharing().responseStatus, 4)
         XCTAssertEqual(p.waitFinished(), .failed("unsupported attachment"))
     }
