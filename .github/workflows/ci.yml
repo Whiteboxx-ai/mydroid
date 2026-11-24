@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
-      - run: node test/background.test.js && node test/detector.test.js && node test/access.test.js
+      - run: node test/background.test.js && node test/detector.test.js && node test/access.test.js && node test/welcome.test.js
         working-directory: extension
 
   install-script:

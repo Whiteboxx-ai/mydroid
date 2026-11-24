@@ -5,9 +5,11 @@ description: Camera roll sync, phone files on your Mac, Mac folders on your phon
 
 ## Photos
 
-New photos and videos from your phone's camera roll arrive in **Pictures → Mydroid** on your Mac. Nothing is copied twice, and a dropped connection picks up where it stopped.
+New photos from your phone's camera roll arrive in **Pictures → Mydroid** on your Mac. Nothing is copied twice, and a dropped connection picks up where it stopped.
 
 Browse the whole library in the Mydroid window under **Photos**, and save what you want. You can also add photos to Apple Photos in Settings → Photos.
+
+To move a video, share it from your phone as a file.
 
 ## Send to Mac
 

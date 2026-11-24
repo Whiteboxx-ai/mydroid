@@ -2,29 +2,30 @@
 
 # Mydroid
 
-Your Android phone, on your Mac. Notifications and replies, photos, calls, texts, files, clipboard and 2FA codes, over your own Wi-Fi. No account, no cloud.
+Mydroid connects your Android phone to your Mac over Wi-Fi. Reply to a text without picking up your phone. Find the photo you just took in Pictures. Send a file either way, or use your phone as a trackpad when you’re away from your desk.
 
-## Install
+It’s free and open source. Your devices connect directly, with no account.
 
-**Mac** (macOS 14 or newer). Paste in Terminal:
+## Get Mydroid
 
-```sh
-curl -fsSL https://raw.githubusercontent.com/gautamm20/mydroid/main/install.sh | bash
-```
+- **[Install on Mac](https://mydroid.whiteboxx.ai/get-started/install-mac/)** for macOS 14 or later.
+- **[Install on Android](https://mydroid.whiteboxx.ai/get-started/install-android/)** for Android 10 or later.
+- **[Pair your phone](https://mydroid.whiteboxx.ai/get-started/pair/)** when both apps are open.
 
-**Android** (Android 10 or newer). Download [`Mydroid.apk`](https://github.com/gautamm20/mydroid/releases/latest/download/Mydroid.apk) on your phone and open it.
+[See what it does](https://mydroid.whiteboxx.ai/) · [Download a release](https://github.com/gautamm20/mydroid/releases/latest) · [Get help](https://mydroid.whiteboxx.ai/help/troubleshooting/)
 
-Then follow the setup window on your Mac: scan the QR code with the phone app.
+## Build it yourself
 
-Step by step, with screenshots: [Get started](site/src/content/docs/get-started/install-mac.md).
+The [build guide](site/src/content/docs/get-started/build-from-source.md) covers the Mac app and Android APK. The same QR pairing flow works with local builds.
 
-## Docs
+| Part | Source |
+| --- | --- |
+| Mac menu bar and desktop app | [`mac/`](mac/) |
+| Android app | [`android/`](android/) |
+| Chrome Authenticator extension | [`extension/`](extension/) |
+| Device-to-device protocol | [`protocol/`](protocol/) |
+| Website and guides | [`site/`](site/) |
 
-- [Features](site/src/content/docs/features/messages-and-calls.md)
-- [Troubleshooting](site/src/content/docs/help/troubleshooting.md)
-- [Privacy](site/src/content/docs/privacy.md) and [Security](SECURITY.md)
-- [Contributing](CONTRIBUTING.md), [protocol](protocol/PROTOCOL.md), [releasing](docs/releasing.md)
+[Contributing](CONTRIBUTING.md) · [Privacy](https://mydroid.whiteboxx.ai/privacy/) · [Security](SECURITY.md)
 
-## License
-
-Not chosen yet.
+Mydroid is released under the [GNU Affero General Public License, version 3](LICENSE) (AGPL-3.0-only).

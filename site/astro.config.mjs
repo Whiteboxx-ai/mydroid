@@ -13,9 +13,11 @@ export default defineConfig({
       customCss: ['./src/styles.css'],
       sidebar: [
         { label: 'Get started', items: [
+          { slug: 'get-started' },
           { slug: 'get-started/install-mac' },
           { slug: 'get-started/install-android' },
           { slug: 'get-started/pair' },
+          { slug: 'get-started/build-from-source' },
         ] },
         { label: 'Features', items: [
           { slug: 'features/messages-and-calls' },

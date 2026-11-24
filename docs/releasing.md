@@ -3,7 +3,7 @@
 ## One-time setup
 
 1. Create the Android signing key by running `scripts/release/build.sh 0.1.0` once on your Mac. It writes `~/.mydroid-release/mydroid.jks` and `password`. Back that folder up.
-2. In the GitHub repo, add two secrets: `ANDROID_KEYSTORE_BASE64` (`base64 -i ~/.mydroid-release/mydroid.jks | pbcopy`) and `ANDROID_KEYSTORE_PASSWORD` (the contents of `password`).
+2. For automated GitHub releases, in the GitHub repo, add two secrets: `ANDROID_KEYSTORE_BASE64` (`base64 -i ~/.mydroid-release/mydroid.jks | pbcopy`) and `ANDROID_KEYSTORE_PASSWORD` (the contents of `password`).
 
 ## Each release
 
@@ -17,6 +17,12 @@ Release files use fixed names (`Mydroid-mac.zip`, `Mydroid.apk`) so `releases/la
 
 `dist/Mydroid-extension.zip` is the upload. The store gives it its own ID: add that ID to the native messaging manifest before publishing (see `AGENTS.md`). Store images come from `scripts/make-icons.py`.
 
-## Before the repo goes public
+## Website
 
-Choose a license and add the Android account for developer verification before January 2027.
+From `site/`, run `npm ci`, `npm run build`, and `wrangler deploy`. The Worker serves the static site at `mydroid.whiteboxx.ai`. App downloads are attached to GitHub Releases.
+
+## Android distribution
+
+The website links to the signed APK. Keep the signing key backed up and register the package and signing identity for Android developer verification where required.
+
+The homepage uses off-screen Mydroid fixture renders. The camera-roll render contains sample images from [Unsplash](https://unsplash.com/license). These photos keep their original terms.

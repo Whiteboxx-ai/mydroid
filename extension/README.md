@@ -34,7 +34,7 @@ for a store build. Until that exists, the guided Load-unpacked flow is what we h
 
 ## Website access
 
-The manifest declares no website access, so installing the extension reads no pages. The first install opens `welcome.html` with an **Enable on all sites** button;
+The manifest declares no website access, so installing the extension reads no pages. The first install opens `welcome.html`, which shows the connection and how to enable sites;
 the toolbar popup offers **Enable on this site** and **All sites**, and the options page shows what is on and can turn it off. Each button calls
 `chrome.permissions.request` straight from its click (`access.js`), as Chrome requires. The background worker watches `permissions.onAdded` and `onRemoved` and registers
 the content script (`chrome.scripting.registerContentScripts`) for exactly the granted sites, then starts it in the tab the user is on. Until a site is allowed, the

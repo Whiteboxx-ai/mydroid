@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0
 
 - Remote is rebuilt around four tabs: Pad (edge scroll, click buttons, three-finger swipes, typing view, settings), Present (deck picker, slide number and notes, laser), Playing (Music and Spotify with cover art and volume) and Open (apps and files on your Mac).
 - The Mac's Now Playing card for your phone's music shows the cover and a time bar.
@@ -8,6 +8,4 @@
 - The permission-waiting flow tells you what to do and offers a one-click reset.
 - Send to Mac copies a shared file before the share screen closes.
 
-## 0.1.0
-
-First public build.
+- Added the public website, step-by-step install and build guides, and a new browser welcome page.

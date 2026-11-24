@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Mydroid Authenticator",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Fill 2FA codes from your Android phone, approved on the phone. Needs Mydroid for Mac.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAycjKMf5j5juO+jSvN8kyczcGaJx6U0g3HqwvREwsy1rN8gt6xpw2eUGzeblMWQIC2qb9FjzU8Xpx6v0TXNHM+9rjTf6Sze6w4A5yKZz3pfQcG6kS4Wx9ntAlaRY8Y6FAmIa0Z44G1jrgJhEKEG1Jpik5iH5nIyoFbApBF+jPruGjRumlpvGdy5o/WLrO5cLfHtqNglkd7bd6ns9yZO0+SucvecdsRm0XIO/TvVf56J6q5bKKElhh/sM0IZmSFODh9IgCCB3Zt5DN/wxWF6qqYE0iH0B6Omjh152bIWgCKvHf3Y+9B/8yCNqnT7bufHTUuGIMZ34FN8wLZxin3+e0nQIDAQAB",
   "minimum_chrome_version": "110",

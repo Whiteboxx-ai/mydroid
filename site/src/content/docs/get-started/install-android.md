@@ -1,23 +1,37 @@
 ---
-title: Install on your phone
-description: Download the APK on your phone and open it.
+title: Install on Android
+description: Download the signed Mydroid APK on your phone and open it.
 ---
 
-Needs Android 10 or newer and Google Play services (the QR scanner uses it).
+Open this guide on your Android 10 or later phone. The QR scanner uses Google Play services.
 
-1. On your phone, open [`Mydroid.apk`](https://github.com/gautamm20/mydroid/releases/latest/download/Mydroid.apk) in the browser and download it.
-2. Open the file. If Android asks, allow your browser to **install unknown apps**.
-3. Tap **Install**. If Play Protect warns about an unknown app, tap **More details → Install anyway**.
-4. Open **Mydroid** and [pair with your Mac](/get-started/pair/).
+**[Download Mydroid.apk](https://github.com/gautamm20/mydroid/releases/latest/download/Mydroid.apk)**
 
-Check the download if you want to: its SHA-256 is in `SHA256SUMS` on the [release page](https://github.com/gautamm20/mydroid/releases/latest).
+1. Open the downloaded APK.
+2. If Android asks, allow your browser to **install unknown apps**.
+3. Tap **Install** and then **Open**.
+
+<details>
+<summary>Reading this on your Mac?</summary>
+
+Scan this code with your phone’s camera to open the Android guide there.
+
+<img src="/screenshots/android-install-qr.png" width="150" height="150" alt="QR code for this Android install guide" />
+
+</details>
+
+You can turn your browser’s install permission off again after installing. The [release page](https://github.com/gautamm20/mydroid/releases/latest) includes the checksum if you want to verify the file.
+
+[Continue to pairing](/get-started/pair/)
 
 ## Allow restricted settings
 
-Android blocks apps installed from a file from reading notifications until you allow it. Mydroid walks you through this when you turn notifications on. By hand:
+Android can require another confirmation for notification access or Instant copy in apps installed from a file.
 
 1. Open **Settings → Apps → Mydroid**.
 2. Tap **⋮ → Allow restricted settings** and confirm.
-3. Go back to Mydroid and turn the feature on.
+3. Go back to Mydroid and turn on the feature you want.
 
-The same step applies to text messages and Instant copy.
+If the option is missing or the phone keeps dropping its connection, see [Troubleshooting](/help/troubleshooting/).
+
+[Build the Android app yourself](/get-started/build-from-source/#build-for-android)
