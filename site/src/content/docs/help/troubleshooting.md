@@ -19,6 +19,13 @@ Use the [install line](/get-started/install-mac/), which avoids the warning. If 
 2. If Android says the setting is restricted, [allow restricted settings](/get-started/install-android/#allow-restricted-settings).
 3. [Keep Mydroid running](/help/keep-it-running/) on your phone.
 
+## "Allow Mydroid on your Mac" stays on the phone
+
+The phone is waiting for the Accessibility switch on your Mac.
+
+1. On your Mac, open **System Settings → Privacy & Security → Accessibility** and switch **Mydroid** on.
+2. Still waiting? Click **Reset and ask again** on the Mydroid card, or press **Show it on my Mac again** on the phone. macOS ties the switch to one exact copy of the app, so an updated or rebuilt Mydroid needs it again.
+
 ## It works for a while, then stops
 
 Your phone is closing the app in the background. See [Keep it running](/help/keep-it-running/).

@@ -141,7 +141,7 @@ struct SetupPrimaryButtonStyle: ButtonStyle {
             .font(.system(size: 13.5, weight: .semibold))
             .foregroundStyle(.white)
             .padding(.horizontal, 16).padding(.vertical, 7)
-            .background(Color.accentColor.opacity(enabled ? (configuration.isPressed ? 0.8 : 1) : 0.4), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .background(Brand.accent.opacity(enabled ? (configuration.isPressed ? 0.8 : 1) : 0.4), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
             .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
     }
 }
@@ -186,7 +186,7 @@ private struct StepRow<Body: View>: View {
 
     private var badge: some View {
         ZStack {
-            Circle().fill(isDone ? Color.green : (isCurrent ? Color.accentColor : Color.clear))
+            Circle().fill(isDone ? Color.green : (isCurrent ? Brand.accent : Color.clear))
             Circle().strokeBorder(Color.primary.opacity(isDone || isCurrent ? 0 : 0.25), lineWidth: 1.2)
             if isDone { Image(systemName: "checkmark").font(.system(size: 12, weight: .bold)).foregroundStyle(.white) }
             else { Text("\(number)").font(.system(size: 13, weight: .semibold, design: .rounded)).foregroundStyle(isCurrent ? Color.white : Color.secondary) }
@@ -215,7 +215,7 @@ private struct AddStep: View {
                 .controlSize(.regular)
             }
             HStack(spacing: 8) {
-                HUDSpinner(color: .accentColor)
+                HUDSpinner(color: Brand.accent)
                 Text("Waiting for \(name)\u{2026}").font(.system(size: 12.5)).foregroundStyle(.secondary)
             }
             .padding(.top, 2)
@@ -233,8 +233,8 @@ struct FolderTile: View {
             Text("Browser Extension").font(.system(size: 11, weight: .medium)).lineLimit(1)
         }
         .padding(.horizontal, 12).padding(.vertical, 9)
-        .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.accentColor.opacity(0.55), style: StrokeStyle(lineWidth: 1.2, dash: [5, 3])))
+        .background(Brand.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.accent.opacity(0.55), style: StrokeStyle(lineWidth: 1.2, dash: [5, 3])))
         .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .onDrag { NSItemProvider(object: url as NSURL) }
         .help("Drag onto the Extensions page")
@@ -269,7 +269,7 @@ struct DeveloperModeIllustration: View {
                 }
                 .padding(10)
             }
-            Circle().strokeBorder(Color.accentColor.opacity(0.9), lineWidth: 2).frame(width: 34, height: 34).offset(x: -3, y: -2)
+            Circle().strokeBorder(Brand.accent.opacity(0.9), lineWidth: 2).frame(width: 34, height: 34).offset(x: -3, y: -2)
         }
         .frame(width: 300, height: 76)
         .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
@@ -282,7 +282,7 @@ struct DeveloperModeIllustration: View {
 private struct MiniToggleStyle: ToggleStyle {
     func makeBody(configuration: Configuration) -> some View {
         ZStack(alignment: configuration.isOn ? .trailing : .leading) {
-            Capsule().fill(configuration.isOn ? Color.accentColor : Color.primary.opacity(0.25)).frame(width: 28, height: 16)
+            Capsule().fill(configuration.isOn ? Brand.accent : Color.primary.opacity(0.25)).frame(width: 28, height: 16)
             Circle().fill(.white).shadow(radius: 0.5).frame(width: 12, height: 12).padding(2)
         }
     }

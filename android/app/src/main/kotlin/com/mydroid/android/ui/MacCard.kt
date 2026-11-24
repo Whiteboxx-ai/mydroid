@@ -58,7 +58,7 @@ internal fun MacCard(
             }
         }
         HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = cs.outlineVariant.copy(alpha = 0.5f))
-        MacRow(Glyphs.Mouse, "Remote", "Trackpad, presenter, media", cs.primaryContainer, cs.onPrimaryContainer, onRemote)
+        MacRow(Glyphs.Mouse, "Remote", "Pad, slides, music, apps", cs.primaryContainer, cs.onPrimaryContainer, onRemote)
         HorizontalDivider(Modifier.padding(start = 70.dp, end = 16.dp), color = cs.outlineVariant.copy(alpha = 0.5f))
         MacRow(Glyphs.Folder, "Mac files", "Opens in Files", cs.secondaryContainer, cs.onSecondaryContainer, onFiles)
         HorizontalDivider(Modifier.padding(start = 70.dp, end = 16.dp), color = cs.outlineVariant.copy(alpha = 0.5f))

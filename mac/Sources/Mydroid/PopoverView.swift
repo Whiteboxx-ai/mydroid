@@ -369,10 +369,10 @@ struct TransfersView: View {
             VStack(spacing: 6) {
                 ForEach(outgoing) { t in
                     HStack(spacing: 8) {
-                        Image(systemName: "arrow.up.circle.fill").foregroundStyle(Color.accentColor)
+                        Image(systemName: "arrow.up.circle.fill").foregroundStyle(Brand.accent)
                         VStack(alignment: .leading, spacing: 3) {
                             Text("Sending \(t.name)").font(.system(size: 12, weight: .medium)).lineLimit(1)
-                            ProgressView(value: t.fraction).progressViewStyle(.linear).tint(.accentColor)
+                            ProgressView(value: t.fraction).progressViewStyle(.linear).tint(Brand.accent)
                         }
                         Text("\(Int(t.fraction * 100))%").font(.system(size: 11)).monospacedDigit().foregroundStyle(.secondary)
                     }
@@ -460,7 +460,7 @@ struct PhotoPreview: View {
         VStack(spacing: 10) {
             HStack {
                 Button { model.previewPhoto = nil } label: { Label("Back", systemImage: "chevron.left") }
-                    .buttonStyle(.plain).foregroundStyle(Color.accentColor).font(.system(size: 13, weight: .medium))
+                    .buttonStyle(.plain).foregroundStyle(Brand.accent).font(.system(size: 13, weight: .medium))
                 Spacer()
                 Text(file.name).font(.system(size: 12.5, weight: .semibold)).lineLimit(1)
                 Spacer()
@@ -499,9 +499,9 @@ struct DropOverlay: View {
         ZStack {
             RoundedRectangle(cornerRadius: 14, style: .continuous).fill(.regularMaterial)
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(Color.accentColor, style: StrokeStyle(lineWidth: 2, dash: [7, 5]))
+                .strokeBorder(Brand.accent, style: StrokeStyle(lineWidth: 2, dash: [7, 5]))
             VStack(spacing: 6) {
-                Image(systemName: "arrow.down.doc.fill").font(.system(size: 30)).foregroundStyle(Color.accentColor)
+                Image(systemName: "arrow.down.doc.fill").font(.system(size: 30)).foregroundStyle(Brand.accent)
                 Text("Drop to send to \(model.phoneName)").font(.system(size: 13, weight: .semibold))
             }
         }
@@ -519,7 +519,7 @@ struct FooterView: View {
             Button { model.openMainWindow() } label: {
                 Label("Open Mydroid", systemImage: "macwindow").font(.system(size: 12, weight: .medium))
             }
-            .buttonStyle(.plain).foregroundStyle(Color.accentColor)
+            .buttonStyle(.plain).foregroundStyle(Brand.accent)
             .help("Messages, Photos, Calls and Files (\u{2303}\u{2325}M)")
             Spacer()
             Button { NSApp.terminate(nil) } label: { Text("Quit Mydroid").font(.system(size: 11.5)) }

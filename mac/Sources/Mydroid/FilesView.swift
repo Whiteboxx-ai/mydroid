@@ -80,9 +80,9 @@ struct DropZone: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 14, style: .continuous).fill(.regularMaterial)
-            RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.accentColor, style: StrokeStyle(lineWidth: 2, dash: [8, 6]))
+            RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.accent, style: StrokeStyle(lineWidth: 2, dash: [8, 6]))
             VStack(spacing: 8) {
-                Image(systemName: "arrow.down.doc.fill").font(.system(size: 34)).foregroundStyle(Color.accentColor)
+                Image(systemName: "arrow.down.doc.fill").font(.system(size: 34)).foregroundStyle(Brand.accent)
                 Text("Drop to send to \(model.phoneName)").font(.system(size: 14, weight: .semibold))
             }
         }
@@ -102,7 +102,7 @@ struct FileRow: View {
             ZStack(alignment: .bottomTrailing) {
                 icon.frame(width: 40, height: 40).clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
                 Image(systemName: entry.direction == .received ? "arrow.down.circle.fill" : "arrow.up.circle.fill")
-                    .symbolRenderingMode(.palette).foregroundStyle(.white, entry.direction == .received ? Color.green : Color.accentColor)
+                    .symbolRenderingMode(.palette).foregroundStyle(.white, entry.direction == .received ? Color.green : Brand.accent)
                     .font(.system(size: 15)).offset(x: 4, y: 4)
             }
             .frame(width: 44, height: 44)

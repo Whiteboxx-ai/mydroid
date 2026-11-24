@@ -14,9 +14,9 @@ import os, subprocess, sys, tempfile, shutil
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-TOP, BOTTOM, DEEP = "#8466FF", "#5233E0", "#5E40EA"   # tile gradient (violet) and the screen-dot colour
-ANDROID_BG = "#5B3FE0"
-CORAL = "#FF5A5F"
+TOP, BOTTOM, DEEP = "#1FAE9F", "#0A5F56", "#118576"   # tile gradient (teal) and the screen-dot colour
+ANDROID_BG = "#0B6E63"
+CORAL = "#FF7A59"
 # The mark, on a 128 grid: a rounded screen with a pill slotted into a gap in its bottom edge (a phone docking into a Mac).
 FRAME = "M51 92H45a15 15 0 0 1-15-15V43a15 15 0 0 1 15-15H83a15 15 0 0 1 15 15V77a15 15 0 0 1-15 15H77"
 
@@ -112,9 +112,9 @@ def shot_page(title, sub, img, crop, scale):
     x, y, w, h = crop
     return f'''<!doctype html><meta charset="utf-8"><style>
 html,body{{margin:0;width:1280px;height:800px;font-family:{FONT};overflow:hidden}}
-body{{background:linear-gradient(160deg,#F5F1FF 0%,#DCD2FF 100%);display:flex;flex-direction:column;align-items:center}}
-h1{{margin:64px 0 0;font-size:54px;letter-spacing:-1.2px;color:#2A1B7A;font-weight:700}}
-p{{margin:14px 0 0;font-size:26px;color:#5233E0}}
+body{{background:linear-gradient(160deg,#F1FBF8 0%,#CDEFE8 100%);display:flex;flex-direction:column;align-items:center}}
+h1{{margin:64px 0 0;font-size:54px;letter-spacing:-1.2px;color:#06312C;font-weight:700}}
+p{{margin:14px 0 0;font-size:26px;color:#0B6E63}}
 .card{{margin-top:44px;width:{w*scale:g}px;height:{h*scale:g}px;border-radius:18px;overflow:hidden;
 box-shadow:0 30px 70px rgba(7,89,133,.28),0 0 0 1px rgba(7,89,133,.10);background:url("file://{ROOT}/assets/chrome-store/source/{img}.png") -{x*scale:g}px -{y*scale:g}px/{1350*scale:g}px auto no-repeat}}
 </style><h1>{title}</h1><p>{sub}</p><div class="card"></div>'''
@@ -136,7 +136,7 @@ def promo(w, h, big, small_tile, with_card):
     card = f'<div class="card"></div>' if with_card else ""
     return f'''<!doctype html><meta charset="utf-8"><style>
 html,body{{margin:0;width:{w}px;height:{h}px;font-family:{FONT};overflow:hidden}}
-body{{background:linear-gradient(135deg,#8466FF 0%,#4A2DD0 100%);color:#fff;display:flex;align-items:center;justify-content:{"flex-start" if with_card else "center"};gap:{int(h*.08)}px;padding:0 {int(w*.07)}px;box-sizing:border-box}}
+body{{background:linear-gradient(135deg,#1FAE9F 0%,#0A5F56 100%);color:#fff;display:flex;align-items:center;justify-content:{"flex-start" if with_card else "center"};gap:{int(h*.08)}px;padding:0 {int(w*.07)}px;box-sizing:border-box}}
 .t h1{{margin:0;font-size:{big}px;line-height:1.05;letter-spacing:-1px;font-weight:700}}
 .t p{{margin:{int(big*.28)}px 0 0;font-size:{int(big*.42)}px;opacity:.92;line-height:1.25}}
 .card{{margin-left:auto;flex-shrink:0;width:491px;height:238px;border-radius:18px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.30);

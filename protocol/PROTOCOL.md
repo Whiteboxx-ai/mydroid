@@ -489,7 +489,7 @@ Four additions to Remote (section 10). All of them are phone-to-Mac requests ove
 | `present.watch` | P→M | `on` bool. While on, the Mac sends `present.state` on change (it may poll the app at most once a second). The phone turns it off when the Present screen closes. |
 | `present.state` | M→P | `active` bool. When true: `app`, `index` (1-based slide), `count`, `notes` (presenter notes of the current slide, at most 4 KB, optional), `title` (optional). Fields the app can't report are left out. |
 
-`remote.state.presenting` (section 10) still says that a slideshow is running at all; `present.state` adds where it is.
+`remote.state.presenting` (section 10) still says that a slideshow is running at all; `present.state` adds where it is. When macOS has not let Mydroid control the app, `present.state` carries `active:true`, `app` and `error:"automation"` and nothing else.
 
 ### 16.3 Mac media
 

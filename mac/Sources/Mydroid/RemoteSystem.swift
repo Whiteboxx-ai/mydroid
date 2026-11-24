@@ -14,7 +14,17 @@ import MydroidCore
 // MARK: Accessibility
 
 final class SystemAccessibility: AccessibilityChecking {
-    var isTrusted: Bool { AXIsProcessTrusted() }
+    /// `AXIsProcessTrusted` is the official answer. It has been seen to say no for an ad-hoc signed copy whose switch is on, so when it
+    /// says no we also ask the question that matters: can this process post events? (An active event tap needs the same permission.)
+    var isTrusted: Bool { AXIsProcessTrusted() || Self.canPostEvents() }
+
+    private static func canPostEvents() -> Bool {
+        let mask = CGEventMask(1 << CGEventType.mouseMoved.rawValue)
+        guard let tap = CGEvent.tapCreate(tap: .cgSessionEventTap, place: .headInsertEventTap, options: .defaultTap, eventsOfInterest: mask,
+                                          callback: { _, _, event, _ in Unmanaged.passUnretained(event) }, userInfo: nil) else { return false }
+        CFMachPortInvalidate(tap)
+        return true
+    }
 
     /// Adds Mydroid to the Accessibility list (the system sheet), and opens Privacy & Security > Accessibility.
     /// The first call per launch uses the prompt; later calls only open the pane.
@@ -26,6 +36,19 @@ final class SystemAccessibility: AccessibilityChecking {
             _ = AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary)
         }
         Self.openSettings()
+    }
+
+    /// For a permission that is switched on in System Settings but doesn't work: macOS ties it to one exact build of the app, and
+    /// every rebuilt or updated copy counts as a new one. Clears Mydroid's entry, then asks again from scratch.
+    func resetAndPrompt() {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/tccutil")
+        p.arguments = ["reset", "Accessibility", Bundle.main.bundleIdentifier ?? "com.mydroid.mac"]
+        p.standardOutput = FileHandle.nullDevice; p.standardError = FileHandle.nullDevice
+        try? p.run()
+        p.waitUntilExit()
+        prompted = false
+        requestAndOpenSettings()
     }
 
     static func openSettings() {

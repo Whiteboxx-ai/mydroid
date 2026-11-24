@@ -10,6 +10,10 @@ struct AccessibilityCardView: View {
     static let width: CGFloat = 392
     var open: () -> Void
     var notNow: () -> Void
+    var reset: () -> Void = {}
+    /// Called when the card grows, so its window can grow with it.
+    var resized: () -> Void = {}
+    @State private var stuck = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -22,14 +26,14 @@ struct AccessibilityCardView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Control this Mac from your phone")
                         .font(.system(size: 14, weight: .semibold)).fixedSize(horizontal: false, vertical: true)
-                    Text("Allow Mydroid in Accessibility.")
+                    Text("macOS shows a small box. Choose Open System Settings, switch Mydroid on, then close the box.")
                         .font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
             }
             Label {
                 Text("Privacy & Security \u{203A} Accessibility \u{203A} **Mydroid**")
                     .font(.system(size: 12)).fixedSize(horizontal: false, vertical: true)
-            } icon: { Image(systemName: "switch.2").foregroundStyle(Color.accentColor) }
+            } icon: { Image(systemName: "switch.2").foregroundStyle(Brand.accent) }
                 .padding(.horizontal, 10).padding(.vertical, 8)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -42,8 +46,21 @@ struct AccessibilityCardView: View {
             HStack(spacing: 6) {
                 ProgressView().controlSize(.small)
                 Text("Waiting for permission\u{2026}").font(.system(size: 11.5, weight: .medium)).foregroundStyle(.secondary)
-                    .help("Already on? Switch Mydroid off and on again. macOS treats each updated copy as a new app.")
             }
+            if stuck {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Already switched on? macOS ties the switch to one exact copy of the app, so a rebuilt or updated Mydroid needs it again.")
+                        .font(.system(size: 11.5)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    Button("Reset and ask again", action: reset).controlSize(.small)
+                }
+                .transition(.opacity)
+            }
+        }
+        .task {
+            try? await Task.sleep(nanoseconds: 8_000_000_000)
+            withAnimation { stuck = true }
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            resized()
         }
         .padding(14)
         .frame(width: Self.width)
@@ -62,6 +79,8 @@ struct AccessibilityRecoveryCard: View {
                      message: "Trackpad, keyboard and clicker need Accessibility.") {
             HStack(spacing: 8) {
                 Button("Open Settings") { model.remote.openAccessibilitySettings() }.controlSize(.small).buttonStyle(.bordered)
+                Button("Reset") { model.remote.resetAccessibilityAndAsk() }.controlSize(.small).buttonStyle(.bordered)
+                    .help("Already switched on but still waiting? Clears Mydroid's entry and asks again.")
                 Button("Not Now") { model.remote.dismissCard() }.controlSize(.small).buttonStyle(.plain).foregroundStyle(.secondary)
             }
         }
@@ -74,7 +93,7 @@ struct ClickerReadyLine: View {
     var body: some View {
         if model.state.link == .connected, model.remote.presenting != nil {
             HStack(spacing: 6) {
-                Image(systemName: "play.rectangle.fill").font(.system(size: 11)).foregroundStyle(Color.accentColor)
+                Image(systemName: "play.rectangle.fill").font(.system(size: 11)).foregroundStyle(Brand.accent)
                 Text("Clicker ready on your phone").font(.system(size: 11.5)).foregroundStyle(.secondary)
                 Spacer(minLength: 0)
             }

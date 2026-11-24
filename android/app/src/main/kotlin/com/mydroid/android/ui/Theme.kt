@@ -27,7 +27,7 @@ private val Dark = darkColorScheme(
 )
 
 @Composable
-fun MydroidTheme(dark: Boolean = isSystemInDarkTheme(), dynamic: Boolean = true, content: @Composable () -> Unit) {
+fun MydroidTheme(dark: Boolean = isSystemInDarkTheme(), dynamic: Boolean = false, content: @Composable () -> Unit) {
     val ctx = LocalContext.current
     val scheme = when {
         dynamic && Build.VERSION.SDK_INT >= 31 -> if (dark) dynamicDarkColorScheme(ctx) else dynamicLightColorScheme(ctx)

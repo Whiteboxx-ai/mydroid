@@ -18,6 +18,14 @@ extension Hub {
         }
     }
 
+    /// The phone asked, so say what is true now even if it hasn't changed: that is how it knows the answer is fresh.
+    public func resendRemoteState() {
+        queue.async {
+            self.remoteSent = nil
+            self.sendRemoteState()
+        }
+    }
+
     func sendRemoteState() {
         let r = state.remote
         guard remoteReported, active != nil, r != remoteSent else { return }

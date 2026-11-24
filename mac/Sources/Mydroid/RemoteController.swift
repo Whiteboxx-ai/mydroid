@@ -211,6 +211,12 @@ final class RemoteController {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in MainActor.assumeIsolated { self?.recheck() } }
     }
 
+    /// "Already on, still waiting": clear the stale entry and ask again.
+    func resetAccessibilityAndAsk() {
+        checker.resetAndPrompt()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in MainActor.assumeIsolated { self?.recheck() } }
+    }
+
     func recheck() {
         guard live else { return }
         let t = router.refresh()

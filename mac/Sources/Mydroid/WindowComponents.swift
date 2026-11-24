@@ -128,7 +128,7 @@ struct SearchField: View {
         }
         .padding(.horizontal, 8).padding(.vertical, 5)
         .background(.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(focused ? Color.accentColor.opacity(0.6) : .clear, lineWidth: 2))
+        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(focused ? Brand.accent.opacity(0.6) : .clear, lineWidth: 2))
         .animation(.easeOut(duration: 0.15), value: focused)
         .background(Button("") { focused = true }.keyboardShortcut("f", modifiers: .command).opacity(0).allowsHitTesting(false))
     }

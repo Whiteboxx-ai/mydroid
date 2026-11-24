@@ -49,9 +49,9 @@ struct CameraImportView: View {
         VStack(spacing: 6) {
             Image(systemName: "key.viewfinder")
                 .font(.system(size: 26, weight: .medium))
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(Brand.accent)
                 .frame(width: 52, height: 52)
-                .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .background(Brand.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             Text("Import from Google Authenticator").font(.system(size: 18, weight: .semibold))
             Text("Show the transfer codes to this Mac\u{2019}s camera.")
                 .font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
@@ -61,7 +61,7 @@ struct CameraImportView: View {
     @ViewBuilder private var stage: some View {
         switch controller.phase {
         case .scanning, .askingForCamera: cameraStage
-        case .approving: ResultPanel(symbol: "iphone.gen3", tint: .accentColor, busy: true,
+        case .approving: ResultPanel(symbol: "iphone.gen3", tint: Brand.accent, busy: true,
                                      title: "Approve on your phone\u{2026}",
                                      detail: "Check the list on your phone, then tap Add.")
         case .done(let added, let skipped): ResultPanel(symbol: "checkmark.circle.fill", tint: .green, busy: false,
@@ -122,7 +122,7 @@ struct CameraImportView: View {
                 if let p = controller.progress {
                     HStack(spacing: 5) {
                         ForEach(0..<p.total, id: \.self) { i in
-                            Capsule().fill(i < p.scanned ? Color.accentColor : Color.primary.opacity(0.15)).frame(height: 5)
+                            Capsule().fill(i < p.scanned ? Brand.accent : Color.primary.opacity(0.15)).frame(height: 5)
                         }
                     }
                     .frame(maxWidth: 220)
@@ -212,7 +212,7 @@ private struct Step<Content: View>: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             Text("\(n)").font(.system(size: 11, weight: .bold, design: .rounded)).foregroundStyle(.white)
-                .frame(width: 18, height: 18).background(Color.accentColor, in: Circle())
+                .frame(width: 18, height: 18).background(Brand.accent, in: Circle())
             content.font(.system(size: 13)).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
         }
@@ -260,7 +260,7 @@ private struct FramingGuide: View {
                 }
                 .fill(.black.opacity(0.3), style: FillStyle(eoFill: true))
                 CornerBrackets(rect: rect, length: 34, radius: 18)
-                    .stroke(active ? Color.accentColor : .white, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+                    .stroke(active ? Brand.accent : .white, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
                     .shadow(color: .black.opacity(0.35), radius: 3)
             }
         }

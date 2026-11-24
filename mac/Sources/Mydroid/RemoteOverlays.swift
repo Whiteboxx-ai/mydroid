@@ -309,7 +309,9 @@ final class AccessibilityPromptController {
         let p = FloatingPanel(size: size)
         let host = NSHostingView(rootView: AccessibilityCardView(
             open: { [weak controller] in controller?.openAccessibilitySettings() },
-            notNow: { [weak controller] in controller?.dismissCard() }
+            notNow: { [weak controller] in controller?.dismissCard() },
+            reset: { [weak controller] in controller?.resetAccessibilityAndAsk() },
+            resized: { [weak self] in self?.fit() }
         ))
         host.frame = NSRect(origin: .zero, size: size)
         p.contentView = host

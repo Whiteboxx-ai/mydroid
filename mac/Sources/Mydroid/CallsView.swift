@@ -49,7 +49,7 @@ struct RecentsList: View {
                       tint: .orange) { AskOnPhoneButton(kind: .calls) }
         } else if !s.settings.calls {
             StateView(icon: "phone", title: "Calls on your Mac",
-                      message: "See recents, answer and decline from here.", tint: .accentColor) {
+                      message: "See recents, answer and decline from here.", tint: Brand.accent) {
                 Button("Turn On Calls") { model.updateSettings { $0.calls = true } }.buttonStyle(.borderedProminent).controlSize(.large)
             }
         } else if rows.isEmpty {

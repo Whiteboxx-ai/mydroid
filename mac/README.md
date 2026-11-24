@@ -498,3 +498,11 @@ launch, and `set player position` timing). The Android side of `auth.import` and
 - **Compact HUD.** The ⌃⌥C panel is 340 pt wide with a short title and at most one short line per state ("Approve on your phone…", "Filled ✓", "Denied", "Timed out", "No account for <site>").
 - **Tests and renders.** `ExtensionSetupTests` (Core: folder sync, version order, browser detection, the `hello` op) and `SetupFlowTests` (the setup model and its steps, hello flow, mirrored preview, and renders): `MYDROID_RENDER_DIR=<dir> swift test --filter SetupFlowTests`
   writes `setup-*` (each step, the paste fallback, done), `settings-authenticator-browsers` and `popover-header-gear-*`. Every home in these tests is a temporary folder; no real browser profile is touched.
+
+## v1.10: Remote, rethought (PROTOCOL.md 16)
+
+`RemoteV2.swift` and `RemoteV2Services.swift` in Core hold the seams (`AppWorkspace`, `ScriptRunning`, `ArtworkEncoding`) and the services behind them: `PresentService` (open and play a deck, read the slide number and Keynote notes), `MediaService` (Music and Spotify through `osascript`, cover art, volume and commands) and `MacRemoteService` (the app list). `HubRemote.swift` handles `mac.apps.get`, `mac.launch`, `mac.open`, `present.*` and `mac.media.*`; opening a file reuses the file-share confinement, so only shared folders can be opened. `MacRemoteSystem.swift` in the app is the real NSWorkspace and AppKit side. Tests: `RemoteV2Tests`. Music, Spotify and Keynote are never scripted unless they are running, because scripting a closed app would launch it.
+
+Not verified here: Keynote and PowerPoint scripting (neither was installed on the test Mac), and Music or Spotify answering real automation prompts.
+
+Developer note: each rebuild is a new ad-hoc signature, so macOS forgets the Accessibility permission. `tccutil reset Accessibility com.mydroid.mac`, or press Reset on the permission card.

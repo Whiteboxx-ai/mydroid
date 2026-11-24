@@ -15,38 +15,38 @@ struct MydroidApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            PopoverView().environment(model)
+            PopoverView().environment(model).tint(Brand.accent)
         } label: {
             MenuBarLabel().environment(model)
         }
         .menuBarExtraStyle(.window)
 
         Window("Call Audio", id: "callaudio") {
-            CallAudioSetupView().environment(model)
+            CallAudioSetupView().environment(model).tint(Brand.accent)
                 .onDisappear { model.callAudio.cancelSetup() }
         }
         .windowResizability(.contentSize)
 
         Window("Import from Google Authenticator", id: "authimport") {
-            CameraImportRoot().environment(model)
+            CameraImportRoot().environment(model).tint(Brand.accent)
         }
         .windowResizability(.contentSize)
 
         Window("Set up Mydroid", id: "setup") {
-            SetupView().environment(model)
+            SetupView().environment(model).tint(Brand.accent)
                 .onDisappear { model.hub.cancelPairing() }
         }
         .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
 
         Window("Mydroid Settings", id: "settings") {
-            SettingsView(initial: model.settingsTab).environment(model)
+            SettingsView(initial: model.settingsTab).environment(model).tint(Brand.accent)
         }
         .windowResizability(.contentSize)
 
         // The full window: Messages, Photos, Calls and Files. Open it from the popover, or with \u{2303}\u{2325}M.
         Window("Mydroid", id: "main") {
-            MainWindowRoot().environment(model).environment(model.ui)
+            MainWindowRoot().environment(model).environment(model.ui).tint(Brand.accent)
         }
         .defaultSize(width: 1120, height: 720)
         .commands {

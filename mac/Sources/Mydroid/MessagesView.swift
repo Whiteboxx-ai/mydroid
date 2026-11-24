@@ -69,7 +69,7 @@ struct ConversationList: View {
         let m = model.messages
         switch a {
         case .off where hasRows:
-            NoticeBar(icon: "message.badge", text: "Show texts here", tint: .accentColor) {
+            NoticeBar(icon: "message.badge", text: "Show texts here", tint: Brand.accent) {
                 Button("Turn On") { m.enableSms() }.controlSize(.small)
             }
         case .needsPermission where hasRows:
@@ -119,7 +119,7 @@ struct ConversationList: View {
     private var smsOffState: some View {
         StateView(icon: "message.badge", title: "Messages on your Mac",
                   message: "Read and send texts from here.",
-                  tint: .accentColor) {
+                  tint: Brand.accent) {
             Button("Turn On Messages") { model.messages.enableSms() }.buttonStyle(.borderedProminent).controlSize(.large)
         }
     }
@@ -146,7 +146,7 @@ struct ChatRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 6) {
-            Circle().fill(chat.unread ? Color.accentColor : .clear).frame(width: 8, height: 8).padding(.top, 17)
+            Circle().fill(chat.unread ? Brand.accent : .clear).frame(width: 8, height: 8).padding(.top, 17)
                 .accessibilityLabel(chat.unread ? "Unread" : "")
             ChatAvatar(chat: chat, size: 40)
             VStack(alignment: .leading, spacing: 2) {
@@ -328,7 +328,7 @@ struct BubbleRow: View {
                 HStack(spacing: 8) {
                     Label("Not delivered", systemImage: "exclamationmark.circle.fill").font(.system(size: 11, weight: .medium)).foregroundStyle(.red)
                     Text(why).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)
-                    Button("Retry", action: onRetry).buttonStyle(.plain).foregroundStyle(Color.accentColor).font(.system(size: 11, weight: .medium))
+                    Button("Retry", action: onRetry).buttonStyle(.plain).foregroundStyle(Brand.accent).font(.system(size: 11, weight: .medium))
                     Button("Delete", action: onDiscard).buttonStyle(.plain).foregroundStyle(.secondary).font(.system(size: 11))
                 }
                 .padding(.trailing, 6)
@@ -358,7 +358,7 @@ struct BubbleRow: View {
             .foregroundStyle(mine ? Color.white : Color.primary)
             .textSelection(.enabled)
             .padding(.horizontal, 12).padding(.vertical, 7)
-            .background(mine ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(incoming),
+            .background(mine ? AnyShapeStyle(Brand.accent) : AnyShapeStyle(incoming),
                         in: RoundedRectangle(cornerRadius: 17, style: .continuous))
             .opacity(line.status == .pending ? 0.6 : 1)
             .fixedSize(horizontal: false, vertical: true)
@@ -400,7 +400,7 @@ struct Composer: View {
                     Image(systemName: "arrow.up.circle.fill").font(.system(size: 26)).symbolRenderingMode(.hierarchical)
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(text.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.secondary.opacity(0.45) : Color.accentColor)
+                .foregroundStyle(text.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.secondary.opacity(0.45) : Brand.accent)
                 .disabled(text.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !canReply || !connected)
                 .padding(.trailing, 3).padding(.bottom, 1.5)
                 .help("Send")
@@ -437,7 +437,7 @@ struct NewMessageView: View {
             HStack {
                 Text("New Message").font(.system(size: 14, weight: .semibold))
                 Spacer()
-                Button("Cancel") { m.composingNew = false }.buttonStyle(.borderless).foregroundStyle(Color.accentColor)
+                Button("Cancel") { m.composingNew = false }.buttonStyle(.borderless).foregroundStyle(Brand.accent)
             }
             .padding(.horizontal, 16).padding(.vertical, 10).barBackground()
 
@@ -492,7 +492,7 @@ struct NewMessageView: View {
                     Image(systemName: "arrow.up.circle.fill").font(.system(size: 26)).symbolRenderingMode(.hierarchical)
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(m.newText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.secondary.opacity(0.45) : Color.accentColor)
+                .foregroundStyle(m.newText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.secondary.opacity(0.45) : Brand.accent)
                 .disabled(m.newText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !connected)
                 .padding(.trailing, 3).padding(.bottom, 1.5)
             }

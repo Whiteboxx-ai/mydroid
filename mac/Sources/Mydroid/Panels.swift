@@ -345,7 +345,7 @@ struct BannerView: View {
         return HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
                 Label("Verification code", systemImage: "lock.shield.fill").labelStyle(.titleAndIcon)
-                    .font(.system(size: 10.5, weight: .semibold)).foregroundStyle(Color.accentColor).textCase(.uppercase)
+                    .font(.system(size: 10.5, weight: .semibold)).foregroundStyle(Brand.accent).textCase(.uppercase)
                 CodeText(code: n.otp?.grouped ?? "", size: 28)
                 Text(codeSourceLine(n)).font(.system(size: 11.5)).foregroundStyle(.secondary).lineLimit(1)
             }
@@ -354,7 +354,7 @@ struct BannerView: View {
                 Label(copied ? "Copied" : "Copy code", systemImage: copied ? "checkmark" : "doc.on.doc")
                     .font(.system(size: 12, weight: .semibold))
             }
-            .buttonStyle(.borderedProminent).controlSize(.regular).tint(copied ? .green : .accentColor)
+            .buttonStyle(.borderedProminent).controlSize(.regular).tint(copied ? .green : Brand.accent)
         }
     }
 

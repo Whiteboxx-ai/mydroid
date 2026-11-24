@@ -555,6 +555,7 @@ final class AppModel {
             remote.sessionEnded()                    // let go of a drag, hide the laser
         case .remoteAsk:
             remote.permissionNeeded(explicit: true)
+            hub.resendRemoteState()
         case let .quickShareRequest(r):
             notifier.showQuickShareRequest(r)
         case let .quickShareRequestEnded(id):

@@ -160,7 +160,7 @@ struct ReplyField: View {
                     default:
                         Button(action: send) { Image(systemName: "arrow.up.circle.fill").font(.system(size: 22)) }
                             .buttonStyle(.plain)
-                            .foregroundStyle(text.isEmpty ? Color.secondary.opacity(0.5) : Color.accentColor)
+                            .foregroundStyle(text.isEmpty ? Color.secondary.opacity(0.5) : Brand.accent)
                             .disabled(text.isEmpty)
                     }
                 }
@@ -197,7 +197,7 @@ struct ActionLinks: View {
             }
         }
         .buttonStyle(.plain)
-        .font(.system(size: 11.5, weight: .medium)).foregroundStyle(Color.accentColor)
+        .font(.system(size: 11.5, weight: .medium)).foregroundStyle(Brand.accent)
     }
 }
 
@@ -211,7 +211,7 @@ struct SectionHeader: View {
             if count > 0 {
                 Text("\(count)").font(.system(size: 10.5, weight: .semibold)).monospacedDigit()
                     .padding(.horizontal, 6).padding(.vertical, 1)
-                    .background(Color.accentColor.opacity(0.18), in: Capsule()).foregroundStyle(Color.accentColor)
+                    .background(Brand.accent.opacity(0.18), in: Capsule()).foregroundStyle(Brand.accent)
             }
             Spacer()
             if let trailing {
@@ -280,8 +280,8 @@ struct CodeCard: View {
         let copied = ui.copiedKey == n.key
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
-                Image(systemName: "lock.shield.fill").font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.accentColor)
-                Text("Verification code").font(.system(size: 11, weight: .semibold)).foregroundStyle(Color.accentColor).textCase(.uppercase)
+                Image(systemName: "lock.shield.fill").font(.system(size: 11, weight: .semibold)).foregroundStyle(Brand.accent)
+                Text("Verification code").font(.system(size: 11, weight: .semibold)).foregroundStyle(Brand.accent).textCase(.uppercase)
                 Spacer()
                 Text(Fmt.relative(n.when, now: now)).font(.system(size: 11)).foregroundStyle(.secondary)
             }
@@ -294,14 +294,14 @@ struct CodeCard: View {
                         .contentTransition(.symbolEffect(.replace))
                 }
                 .buttonStyle(.borderedProminent).controlSize(.regular)
-                .tint(copied ? .green : .accentColor)
+                .tint(copied ? .green : Brand.accent)
                 .animation(.spring(duration: 0.3), value: copied)
             }
             Text(codeSourceLine(n)).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
         }
         .padding(.horizontal, 13).padding(.vertical, 11)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.accentColor.opacity(0.12)))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.accentColor.opacity(0.25), lineWidth: 0.5))
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.accent.opacity(0.12)))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.accent.opacity(0.25), lineWidth: 0.5))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Verification code \(n.otp?.code.map(String.init).joined(separator: " ") ?? ""), \(codeSourceLine(n))")
     }
@@ -495,7 +495,7 @@ struct Bubbles: View {
                             .font(.system(size: 12.5))
                             .foregroundStyle(m.isMine ? Color.white : Color.primary)
                             .padding(.horizontal, 10).padding(.vertical, 6)
-                            .background(m.isMine ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(Color.primary.opacity(0.09)),
+                            .background(m.isMine ? AnyShapeStyle(Brand.accent) : AnyShapeStyle(Color.primary.opacity(0.09)),
                                         in: RoundedRectangle(cornerRadius: 15, style: .continuous))
                             .fixedSize(horizontal: false, vertical: true)
                         if !m.isMine { Spacer(minLength: 56) }

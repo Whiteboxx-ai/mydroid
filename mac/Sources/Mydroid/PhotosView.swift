@@ -42,7 +42,7 @@ struct PhotosView: View {
         if !s.settings.photos {
             StateView(icon: "photo.on.rectangle.angled", title: "Photos from your phone",
                       message: "Browse your library and save photos here.",
-                      tint: .accentColor) {
+                      tint: Brand.accent) {
                 Button("Turn On Photos") { model.updateSettings { $0.photos = true } }.buttonStyle(.borderedProminent).controlSize(.large)
             }
         } else if s.link == .connected && (s.features.photos == .needsPermission || p.permissionDenied) {
@@ -170,11 +170,11 @@ struct PhotoCell: View {
             .overlay(alignment: .bottomLeading) {
                 if item.isVideo { Image(systemName: "play.fill").font(.system(size: 10)).foregroundStyle(.white).padding(6).shadow(radius: 2) }
             }
-            .overlay { if selected { Rectangle().strokeBorder(Color.accentColor, lineWidth: 3) } }
+            .overlay { if selected { Rectangle().strokeBorder(Brand.accent, lineWidth: 3) } }
             .overlay(alignment: .bottomTrailing) {
                 if selected {
                     Image(systemName: "checkmark.circle.fill").font(.system(size: 18)).symbolRenderingMode(.palette)
-                        .foregroundStyle(.white, Color.accentColor).padding(5).transition(.scale.combined(with: .opacity))
+                        .foregroundStyle(.white, Brand.accent).padding(5).transition(.scale.combined(with: .opacity))
                 }
             }
             .animation(.spring(duration: 0.25, bounce: 0.3), value: selected)

@@ -4,7 +4,7 @@ import MydroidCore
 
 extension Color {
     /// The app's sky-blue, matching the app icon.
-    static let brand = Color(red: 2 / 255, green: 132 / 255, blue: 199 / 255)
+    static var brand: Color { Brand.accent }
 }
 
 /// Initials avatar with a stable per-name gradient, or the notification's own icon when present.
@@ -83,7 +83,7 @@ struct PressableTileStyle: ButtonStyle {
             .padding(.vertical, 10)
             .background {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(active ? Color.accentColor.opacity(0.16) : Color.primary.opacity(hover ? 0.10 : 0.06))
+                    .fill(active ? Brand.accent.opacity(0.16) : Color.primary.opacity(hover ? 0.10 : 0.06))
             }
             .scaleEffect(configuration.isPressed ? 0.96 : 1)
             .animation(.spring(duration: 0.25, bounce: 0.3), value: configuration.isPressed)

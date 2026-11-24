@@ -124,7 +124,11 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
-codesign --force --deep -s - "$APP"
+# macOS records a permission (Accessibility, ...) against the app's designated requirement. An ad-hoc signature's default one is the
+# exact build (cdhash), so every rebuild or update would lose the permission. Naming the app by its identifier keeps it across updates.
+# The helper first, with its own default requirement: a requirement given with --deep would be forced onto every nested binary.
+codesign --force -s - "$APP/Contents/MacOS/mydroid-nmhost"
+codesign --force -s - -r='designated => identifier "com.mydroid.mac"' "$APP"
 codesign --verify --deep --strict "$APP"
 [ -x "$APP/Contents/MacOS/mydroid-nmhost" ] || { echo "mydroid-nmhost is missing from the bundle" >&2; exit 1; }
 plutil -lint "$APP/Contents/Info.plist"
