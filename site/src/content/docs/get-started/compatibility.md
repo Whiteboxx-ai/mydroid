@@ -18,4 +18,13 @@ Mydroid requires **macOS 14 or later** and **Android 10 or later**. The Mac down
 
 These are the supported requirements. Individual phone models and Android builds can handle background apps differently. If sync stops when the screen locks, [find the setting for your phone](/help/keep-it-running/).
 
+## Release checks
+
+| Build | Environment | Result |
+| --- | --- | --- |
+| Mydroid for Mac 0.1.2 | macOS 26.6 on Apple silicon | Installer completed. The ZIP contains Apple silicon and Intel executables. |
+| Mydroid for Android 0.1.3 | Android 14 emulator | The signed APK installed and opened. |
+
+Checked 24 November 2026. These checks cover installation. Bluetooth, calls, and background sync depend on the physical phone.
+
 [Install Mydroid](/get-started/) · [Report a compatibility issue](https://github.com/Whiteboxx-ai/mydroid/issues/new/choose)

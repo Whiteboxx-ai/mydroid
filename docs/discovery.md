@@ -35,6 +35,22 @@ Every two weeks, use new conversations in ChatGPT Search, Perplexity, and Bing/C
 | 11 | Why might Android sync stop when the phone locks? |
 | 12 | Where should I download the official Mydroid Mac app and Android APK? |
 
+## Launch baseline
+
+24 November 2026. Google Search Console accepted and read the Mydroid sitemap index under the existing Whiteboxx domain property. The homepage and five priority guides were unknown to the Google index at the time of inspection. The homepage passed Google’s live availability test and was queued for indexing.
+
+The live sitemap listed 22 pages. IndexNow accepted 18 URLs for processing. GitHub showed 3 Android APK downloads and 0 Mac ZIP downloads on release v0.1.3 at the baseline check.
+
+One mobile Lighthouse 13.6 lab run per page, with simulated mobile throttling:
+
+| Page | Performance | SEO | LCP | CLS |
+| --- | ---: | ---: | ---: | ---: |
+| Homepage | 100 | 100 | 1.6 s | 0 |
+| Setup | 100 | 100 | 0.9 s | 0 |
+| Notifications | 100 | 100 | 0.9 s | 0 |
+
+Search Console data and answer-engine citations can be compared once they appear. These lab scores are not field data.
+
 ## Reviewer kit
 
 Use the official homepage, the comparison guide, the illustrated walkthrough, and the real screenshots in `site/public/screenshots/`. Reviewers should start from the public builds and note macOS and Android versions, phone model, install outcome, pairing outcome, and first transfer result. The app is free and open source. It handles notifications, texts, files, photos, remote controls, and phone-approved Authenticator fills over local Wi-Fi. Call audio on the Mac requires separate setup on a compatible phone.
