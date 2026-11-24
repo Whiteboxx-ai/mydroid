@@ -63,6 +63,23 @@ final class LoopbackTests: XCTestCase {
 
     private func sha(_ d: Data) -> String { SHA256.hash(data: d).map { String(format: "%02x", $0) }.joined() }
 
+    func testListenerRestartKeepsThePortKnownToThePhone() async throws {
+        let previous = TestClient(port: port)
+        try await previous.connect()
+        defer { previous.drop() }
+
+        hub.restartListener(dropConnections: true)
+        let deadline = Date().addingTimeInterval(5)
+        while hub.listeningPort == nil && Date() < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        XCTAssertEqual(hub.listeningPort, port)
+
+        let reconnect = TestClient(port: port)
+        try await reconnect.connect()
+        reconnect.drop()
+    }
+
     /// Streams `data` as chunks from `offset`, up to `maxChunks`, and optionally sends `xfer.end`.
     private func stream(_ c: TestClient, xid: String, data: Data, from offset: Int, maxChunks: Int = .max, end: Bool) async throws {
         var off = offset, n = 0

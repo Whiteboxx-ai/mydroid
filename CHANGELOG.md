@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.4
+
+- The Mac keeps the same Wi-Fi port when it wakes, so your phone can reconnect using the address it already knows.
+- Android handles quick replies from the Mac when you browse or download shared files.
+
 ## 0.1.3
 
 - Android keeps trying to reconnect when your Mac may still be reachable and retries sooner when the phone leaves Doze.

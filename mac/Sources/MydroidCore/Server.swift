@@ -95,6 +95,8 @@ public final class Server {
     private let advertise: Bool
     private let preferredPort: UInt16
     private var listener: NWListener?
+    private var cancellingListener: NWListener?
+    private var pendingPort: UInt16?
     private var peers: [UUID: Peer] = [:]
     private var heartbeat: DispatchSourceTimer?
     private var generation = 0
@@ -112,23 +114,42 @@ public final class Server {
 
     /// Starts listening. Tries the preferred port first, then any free port.
     public func start() {
-        stopListener()
+        start(on: preferredPort)
+    }
+
+    private func start(on requestedPort: UInt16) {
         generation += 1
-        launch(port: preferredPort == 0 ? nil : NWEndpoint.Port(rawValue: preferredPort), gen: generation)
+        pendingPort = requestedPort
+        cancelListener()
+        launchWhenAvailable()
         startHeartbeat()
     }
 
     public func stopListener() {
         generation += 1
-        listener?.cancel()
-        listener = nil
+        pendingPort = nil
+        cancelListener()
+    }
+
+    private func cancelListener() {
+        guard let listener else { return }
+        cancellingListener = listener
+        listener.cancel()
+        self.listener = nil
         port = nil
+    }
+
+    private func launchWhenAvailable() {
+        // Cancellation is asynchronous. Binding early can collide with our own listening socket.
+        guard cancellingListener == nil, let pendingPort else { return }
+        self.pendingPort = nil
+        launch(port: pendingPort == 0 ? nil : NWEndpoint.Port(rawValue: pendingPort), gen: generation)
     }
 
     /// Re-creates the listener (after wake, after a network change). Optionally drops connections.
     public func restart(dropConnections: Bool) {
         if dropConnections { for p in Array(peers.values) { close(p) } }
-        start()
+        start(on: port ?? pendingPort ?? preferredPort)
     }
 
     /// TCP_NODELAY on every session connection: pointer moves are tiny frames at up to 120 per second, and Nagle's algorithm
@@ -155,7 +176,13 @@ public final class Server {
         }
         l.newConnectionHandler = { [weak self] conn in self?.accept(conn) }
         l.stateUpdateHandler = { [weak self, weak l] state in
-            guard let self, let l, gen == self.generation else { return }
+            guard let self, let l else { return }
+            if case .cancelled = state, self.cancellingListener === l {
+                self.cancellingListener = nil
+                self.launchWhenAvailable()
+                return
+            }
+            guard gen == self.generation else { return }
             switch state {
             case .ready:
                 self.port = l.port?.rawValue
