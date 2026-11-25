@@ -24,8 +24,11 @@ class MydroidNotificationListener : NotificationListenerService() {
     }
 
     override fun onListenerDisconnected() {
-        val bridge = manager().notifs
-        if (bridge.listener === this) bridge.listener = null
+        val m = manager()
+        if (m.notifs.listener === this) {
+            m.notifs.listener = null
+            m.media.setEnabled(false)
+        }
         try {
             requestRebind(ComponentName(this, MydroidNotificationListener::class.java))
         } catch (_: Exception) {

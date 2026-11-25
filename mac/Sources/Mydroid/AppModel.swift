@@ -951,11 +951,14 @@ final class AppModel {
 
     // MARK: Main window
 
-    /// "Open Mydroid": the full window, in the Dock and Cmd-Tab while it is open.
+    func applyDockPreference() {
+        NSApplication.shared.setActivationPolicy(prefs.showDockIcon ? .regular : .accessory)
+    }
+
+    /// Opens the window for Messages, Photos, Calls and Files.
     func openMainWindow(_ section: MainSection? = nil) {
         if let section { self.section = section }
         closeMenuBarWindow()
-        NSApp.setActivationPolicy(.regular)
         openWindowAction?("main")
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -967,7 +970,6 @@ final class AppModel {
     func mainWindowAppeared() {
         UIDiagnostics.start()
         mainWindowOpen = true
-        NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
     }
 
@@ -976,7 +978,6 @@ final class AppModel {
         messages.windowClosed()
         messages.flushSave()
         NSApp.dockTile.badgeLabel = nil
-        NSApp.setActivationPolicy(.accessory)
     }
 
     func updateDockBadge() {

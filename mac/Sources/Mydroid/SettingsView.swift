@@ -95,6 +95,8 @@ struct GeneralSettings: View {
                 Toggle("Open at login", isOn: Binding(get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
                 if let note = model.loginItemNote { Text(note).font(.caption).foregroundStyle(.orange) }
                 Toggle("Show phone battery in menu bar", isOn: $m.prefs.showBatteryInMenuBar)
+                Toggle("Show Mydroid in the Dock", isOn: $m.prefs.showDockIcon)
+                    .onChange(of: model.prefs.showDockIcon) { _, _ in model.applyDockPreference() }
             }
 
             Section {
@@ -112,10 +114,6 @@ struct GeneralSettings: View {
                 } label: {
                     InfoLabel("Send to phone", icon: "paperplane",
                               info: "Select text, a link or files, then choose Services \u{203A} Send to Phone. You can also drag files onto the Mydroid menu, or use mydroid://send?url=\u{2026} in Shortcuts.")
-                }
-                LabeledContent("Mydroid") {
-                    Button("Quit Mydroid") { NSApp.terminate(nil) }.controlSize(.small)
-                        .help("Mydroid keeps running in the menu bar when you close its windows")
                 }
             }
         }
@@ -481,6 +479,7 @@ struct PhoneSettings: View {
                             }
                         }
                     }
+                    if model.state.link == .connected, phone?.lowPowerMode == true { BatterySaverNotice() }
                     bluetoothRow
                 } header: { Text("Your phone") }
 

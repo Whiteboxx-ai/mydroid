@@ -614,6 +614,7 @@ class ConnectionManager(private val app: Application) {
         sendDeviceStatus(force = true)
         lastFeatureJson = null
         applySettings()
+        media.resend()
         send(notifs.snapshot())
         flushOutbox()
         kickFileQueue()
@@ -723,6 +724,7 @@ class ConnectionManager(private val app: Application) {
 
     fun onListenerReady() {
         applySettings()
+        media.refresh()
         if (isConnected) send(notifs.snapshot())
     }
 

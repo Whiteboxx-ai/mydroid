@@ -18,6 +18,8 @@ Mydroid then connects on its own whenever you're on the same network, and starts
 
 Open Mydroid from the Mac menu bar. Your phone’s name appears with **Connected over Wi-Fi**. Try sharing a link from your phone to Mydroid.
 
+Click the Dock icon or choose **Open Main Window** in the menu bar panel to browse messages, photos, calls and files. Mydroid keeps syncing when you close the window. To hide the icon, turn off **Show Mydroid in the Dock** in **Settings → General**.
+
 <img src="/screenshots/mac-connected.webp" alt="The Mydroid Mac menu showing Pixel 9 connected over Wi-Fi" />
 
 ## If pairing doesn't work

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.6 · 25 November 2026
+
+- Now Playing clears when your phone has no media to show. You can resume a paused track from the Mac for up to a minute.
+- The Mac shows a Battery Saver warning when your phone reports it is on. Notifications may arrive late, and your phone may disconnect.
+- Click the Dock icon or choose **Open Main Window** in the menu bar panel. Closing the window keeps Mydroid running.
+- Choose **Quit Mydroid** from the gear menu. To hide the Dock icon, turn off **Show Mydroid in the Dock** in **Settings → General**.
+
 ## 0.1.5 · 25 November 2026
 
 ### Android

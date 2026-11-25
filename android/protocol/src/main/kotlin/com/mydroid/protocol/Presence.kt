@@ -136,21 +136,21 @@ enum class MediaAction {
 class MediaTracker(private val seekSlackMs: Long = 2_000) {
     class Decision(val send: Boolean, val withArt: Boolean)
     private var last: MediaSnapshot? = null
-    private var active = false
+    private var active: Boolean? = false // null means the Mac needs a new report, even if there is no player
     private var artSentFor: String? = null
 
-    fun reset() { last = null; active = false; artSentFor = null }
+    fun reset() { last = null; active = null; artSentFor = null }
 
     /** [s] == null means no session. */
     fun decide(s: MediaSnapshot?): Decision {
         if (s == null) {
-            val was = active
+            val sendInactive = active != false
             last = null; active = false; artSentFor = null
-            return Decision(was, false)
+            return Decision(sendInactive, false)
         }
         val l = last
         last = s
-        val wasActive = active
+        val wasActive = active == true
         active = true
         val artNow = s.hasArt && artSentFor != s.trackKey
         if (!wasActive || l == null) return mark(s, artNow, true)

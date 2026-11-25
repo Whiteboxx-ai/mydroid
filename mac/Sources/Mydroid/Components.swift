@@ -56,7 +56,7 @@ struct BatteryView: View {
         HStack(spacing: 3) {
             Image(systemName: symbol)
                 .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(level <= 15 && !charging ? Color.red : (charging ? Color.green : (lowPower ? Color.yellow : Color.secondary)))
+                .foregroundStyle(level <= 15 && !charging ? Color.red : (charging ? Color.green : Color.secondary))
             Text("\(level)%").font(.system(size: 11.5, weight: .medium)).monospacedDigit().foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .ignore)
@@ -71,6 +71,25 @@ struct BatteryView: View {
         case ..<88: return "battery.75percent"
         default: return "battery.100percent"
         }
+    }
+}
+
+struct BatterySaverNotice: View {
+    var body: some View {
+        Label {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Battery Saver is on").fontWeight(.semibold)
+                Text("Notifications may arrive late. Your phone may disconnect.")
+            }
+        } icon: {
+            Image(systemName: "bolt.circle")
+        }
+        .font(.caption)
+        .foregroundStyle(.primary)
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(8)
+        .background(.orange.opacity(0.13), in: RoundedRectangle(cornerRadius: 8))
     }
 }
 

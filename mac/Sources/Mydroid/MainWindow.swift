@@ -176,6 +176,9 @@ struct PhoneStatusCard: View {
                 }
             }
             .padding(.horizontal, 12).padding(.vertical, 10)
+            if s.link == .connected, s.phone?.lowPowerMode == true {
+                BatterySaverNotice().padding(.horizontal, 10).padding(.bottom, 10)
+            }
         }
         .background(.bar)
     }

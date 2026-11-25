@@ -2,12 +2,25 @@ import SwiftUI
 import AppKit
 import MydroidCore
 
+@MainActor
+final class MydroidAppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
+        let model = AppModel.shared
+        guard model.openWindowAction != nil else { return true }
+        if model.isPaired { model.openMainWindow() } else { model.openSetup() }
+        return false
+    }
+}
+
 @main
 struct MydroidApp: App {
     @State private var model = AppModel.shared
+    @NSApplicationDelegateAdaptor(MydroidAppDelegate.self) private var appDelegate
 
     init() {
-        NSApplication.shared.setActivationPolicy(.accessory)
+        AppModel.shared.applyDockPreference()
         NSApplication.shared.servicesProvider = ServicesProvider.shared
         NSUpdateDynamicServices()
         URLSchemeHandler.shared.register()

@@ -265,6 +265,7 @@ public final class Hub: ServerDelegate {
     public func setSettings(_ s: SyncSettings) {
         queue.async {
             self.state.settings = s
+            if !s.media { self.state.media = nil }
             // Muted apps vanish from the list right away.
             let muted = Set(s.mutedApps)
             if !muted.isEmpty {
@@ -544,6 +545,7 @@ public final class Hub: ServerDelegate {
         case "clip.set":
             if state.settings.clipboard, let t = m.string("text") { emit(.clipboard(t)) }
         case "media.state":
+            guard state.settings.media else { return }
             if var next = MediaState(message: m) {
                 if next.art == nil, let old = state.media, old.sameTrack(as: next) { next.art = old.art }
                 // Like the art, `mediaId` is only sent when the track changes (PROTOCOL.md 15).

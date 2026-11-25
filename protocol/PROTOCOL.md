@@ -218,6 +218,8 @@ A phone that receives a `clip.set`-worthy clip marked sensitive (`ClipDescriptio
 | `media.state` | P→M | `active` bool. When true: `pkg`, `app`, `title`, `artist`, `album`, `art` (optional base64 JPEG ≤ 256 px, sent only when the track changes), `playing` bool, `position` ms, `duration` ms, `ts` ms epoch (the moment `position` was sampled), `canSeek`, `canNext`, `canPrev`. Send it on change only, never on a timer. The Mac extrapolates the position. |
 | `media.cmd` | M→P | `action`: `"play"`, `"pause"`, `"toggle"`, `"next"`, `"prev"` or `"seek"`, plus `position` ms for seek. |
 
+When media monitoring starts again or reconnects, send the current state, including `active:false` if there is no player. Send `active:false` when monitoring stops. A paused player is eligible for one minute after its last playback position update. Re-evaluate once at expiry so the Mac clears the card or shows another eligible player.
+
 ### 7.4 Links and "send to phone"
 
 | type | dir | fields |

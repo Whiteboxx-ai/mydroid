@@ -62,6 +62,7 @@ struct PopoverView: View {
         VStack(spacing: 0) {
             HeaderView()
             VStack(spacing: 12) {
+                if model.state.link == .connected, model.state.phone?.lowPowerMode == true { BatterySaverNotice() }
                 ClickerReadyLine()
                 OngoingCallRow()
                 CodeCardsSection(list: model.state.notifications)
@@ -104,14 +105,7 @@ struct HeaderView: View {
             }
             Spacer()
             if s.link == .connected, let b = s.phone?.battery {
-                VStack(alignment: .trailing, spacing: 3) {
-                    BatteryView(level: b, charging: s.phone?.charging ?? false, lowPower: s.phone?.lowPowerMode ?? false)
-                    if s.phone?.lowPowerMode == true {
-                        Text("Battery saver").font(.system(size: 10, weight: .semibold)).foregroundStyle(Color.yellow.opacity(0.95))
-                            .padding(.horizontal, 6).padding(.vertical, 1.5)
-                            .background(Color.yellow.opacity(0.18), in: Capsule())
-                    }
-                }
+                BatteryView(level: b, charging: s.phone?.charging ?? false, lowPower: s.phone?.lowPowerMode ?? false)
             }
             SettingsGearButton()
         }
@@ -148,7 +142,11 @@ struct SettingsGearButton: View {
     @State private var hover = false
 
     var body: some View {
-        Button { model.openSettings(); NSApp.activate(ignoringOtherApps: true) } label: {
+        Menu {
+            Button("Settings…") { model.openSettings() }.keyboardShortcut(",")
+            Divider()
+            Button("Quit Mydroid") { NSApp.terminate(nil) }.keyboardShortcut("q")
+        } label: {
             Image(systemName: "gearshape.fill")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(hover ? Color.primary : Color.secondary)
@@ -156,11 +154,11 @@ struct SettingsGearButton: View {
                 .background(Color.primary.opacity(hover ? 0.10 : 0.06), in: Circle())
                 .contentShape(Circle())
         }
-        .buttonStyle(.plain)
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
         .onHover { hover = $0 }
-        .keyboardShortcut(",")
-        .help("Settings (\u{2318},)")
-        .accessibilityLabel("Settings")
+        .help("Mydroid options")
+        .accessibilityLabel("Mydroid options")
     }
 }
 
@@ -517,16 +515,12 @@ struct FooterView: View {
     var body: some View {
         HStack {
             Button { model.openMainWindow() } label: {
-                Label("Open Mydroid", systemImage: "macwindow").font(.system(size: 12, weight: .medium))
+                Label("Open Main Window", systemImage: "macwindow").font(.system(size: 12, weight: .medium))
             }
             .buttonStyle(.plain).foregroundStyle(Brand.accent)
             .help("Messages, Photos, Calls and Files (\u{2303}\u{2325}M)")
-            Spacer()
-            Button { NSApp.terminate(nil) } label: { Text("Quit Mydroid").font(.system(size: 11.5)) }
-                .buttonStyle(.plain).foregroundStyle(.secondary)
-                .keyboardShortcut("q")
-                .help("Quit Mydroid (\u{2318}Q)")
         }
+        .frame(maxWidth: .infinity)
         .padding(.horizontal, 14).padding(.vertical, 8)
     }
 }

@@ -143,6 +143,14 @@ class PresenceTest {
         assertTrue(t.decide(snap(0, 5)).send)
     }
 
+    @Test fun mediaRefreshWithoutAPlayerClearsThePreviousCard() {
+        val t = MediaTracker()
+        t.decide(snap(0, 0))
+        t.reset()
+        assertTrue(t.decide(null).send)
+        assertFalse(t.decide(null).send)
+    }
+
     // ---- mediaId in media.state (PROTOCOL.md 15)
 
     private val track = "spotify:track:6rqhFgbbKwnb9MLmUQDhG6"

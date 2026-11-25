@@ -36,19 +36,22 @@ class MediaBridge(private val ctx: Context, private val send: (Message) -> Boole
     private var enabled = false
     private var listening = false
     private val watched = LinkedHashMap<MediaSession.Token, Pair<MediaController, MediaController.Callback>>()
-    private var current: MediaController? = null
     /** Debug builds only: also watch our own sessions, so a synthetic one can be tested without touching the user's players. */
     @Volatile var allowOwn = false
 
     private val sessionsListener = MediaSessionManager.OnActiveSessionsChangedListener { list -> sync(list.orEmpty()) }
     private val evaluateRunnable = Runnable { evaluate() }
+    private val expirePausedRunnable = Runnable { evaluate() }
 
     /** On when settings.media, the Mac is connected and notification access is granted. */
     fun setEnabled(on: Boolean) {
         main.post {
             if (on == enabled) { if (on && !listening) attach(); return@post }
             enabled = on
-            if (on) attach() else detach()
+            if (on) attach() else {
+                detach()
+                publishInactive()
+            }
         }
     }
 
@@ -63,7 +66,8 @@ class MediaBridge(private val ctx: Context, private val send: (Message) -> Boole
             listening = true
             sync(msm.getActiveSessions(component))
         } catch (e: SecurityException) {
-            listening = false
+            detach()
+            publishInactive()
             Log.i(TAG, "no notification access yet; media waits")
         }
     }
@@ -73,8 +77,8 @@ class MediaBridge(private val ctx: Context, private val send: (Message) -> Boole
         listening = false
         watched.values.forEach { (c, cb) -> runCatching { c.unregisterCallback(cb) } }
         watched.clear()
-        current = null
         main.removeCallbacks(evaluateRunnable)
+        main.removeCallbacks(expirePausedRunnable)
         tracker.reset()
     }
 
@@ -87,7 +91,10 @@ class MediaBridge(private val ctx: Context, private val send: (Message) -> Boole
             val cb = object : MediaController.Callback() {
                 override fun onPlaybackStateChanged(state: PlaybackState?) = scheduleEvaluate()
                 override fun onMetadataChanged(metadata: MediaMetadata?) = scheduleEvaluate()
-                override fun onSessionDestroyed() = scheduleEvaluate()
+                override fun onSessionDestroyed() {
+                    if (watched[c.sessionToken]?.second === this) watched.remove(c.sessionToken)
+                    scheduleEvaluate()
+                }
             }
             c.registerCallback(cb, main)
             watched[c.sessionToken] = c to cb
@@ -103,10 +110,17 @@ class MediaBridge(private val ctx: Context, private val send: (Message) -> Boole
 
     private fun isPlaying(c: MediaController) = c.playbackState?.state.let { it == PlaybackState.STATE_PLAYING || it == PlaybackState.STATE_BUFFERING }
 
-    private fun best(): MediaController? {
+    private fun pauseRemaining(state: PlaybackState?, now: Long): Long {
+        if (state?.state != PlaybackState.STATE_PAUSED) return 0
+        val updateTime = state.lastPositionUpdateTime
+        if (updateTime <= 0 || updateTime > now) return 0
+        return PAUSED_WINDOW_MS - (now - updateTime)
+    }
+
+    private fun best(now: Long): MediaController? {
         val ordered = watched.values.map { it.first }
         return ordered.firstOrNull { isPlaying(it) && it.metadata != null }
-            ?: ordered.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PAUSED && it.metadata != null }
+            ?: ordered.firstOrNull { pauseRemaining(it.playbackState, now) > 0 && it.metadata != null }
     }
 
     private fun artOf(md: MediaMetadata): Bitmap? =
@@ -114,15 +128,18 @@ class MediaBridge(private val ctx: Context, private val send: (Message) -> Boole
 
     private fun evaluate() {
         if (!enabled) return
-        val c = best()
-        current = c
+        val nowElapsed = SystemClock.elapsedRealtime()
+        val c = best(nowElapsed)
         val md = c?.metadata
         val st = c?.playbackState
+        main.removeCallbacks(expirePausedRunnable)
+        val remaining = pauseRemaining(st, nowElapsed)
+        if (remaining > 0) main.postDelayed(expirePausedRunnable, remaining)
         val snap = if (c == null || md == null || st == null) null else {
             val now = System.currentTimeMillis()
             val playing = isPlaying(c)
             var pos = st.position.coerceAtLeast(0)
-            if (playing && st.state == PlaybackState.STATE_PLAYING) pos += ((SystemClock.elapsedRealtime() - st.lastPositionUpdateTime) * st.playbackSpeed).toLong().coerceAtLeast(0)
+            if (playing && st.state == PlaybackState.STATE_PLAYING) pos += ((nowElapsed - st.lastPositionUpdateTime) * st.playbackSpeed).toLong().coerceAtLeast(0)
             val dur = md.getLong(MediaMetadata.METADATA_KEY_DURATION).coerceAtLeast(0)
             if (dur > 0) pos = pos.coerceAtMost(dur)
             MediaSnapshot(
@@ -142,14 +159,20 @@ class MediaBridge(private val ctx: Context, private val send: (Message) -> Boole
         val d = tracker.decide(snap)
         if (!d.send) return
         if (snap == null || c == null) {
-            send(Message.of("media.state") { put("active", false) })
-            Log.i(TAG, "media.state sent active=false")
+            publishInactive()
             return
         }
         val art = if (d.withArt) c.metadata?.let(::artOf)?.let(::encodeArt) else null
         val msg = snap.toMessage(appLabel(snap.pkg), art)
-        send(msg)
+        if (!send(msg)) {
+            tracker.reset()
+            return
+        }
         Log.i(TAG, "media.state sent active=true pkg=${snap.pkg} playing=${snap.playing} pos=${snap.position} dur=${snap.duration} art=${art?.length ?: 0}B titleLen=${snap.title.length} id=${snap.mediaId != null}")
+    }
+
+    private fun publishInactive() {
+        if (!send(Message.of("media.state") { put("active", false) })) tracker.reset()
     }
 
     private fun appLabel(pkg: String): String = try {
@@ -174,7 +197,7 @@ class MediaBridge(private val ctx: Context, private val send: (Message) -> Boole
     fun command(action: String, position: Long?) {
         main.post {
             if (!enabled) return@post
-            val c = best() ?: current ?: return@post
+            val c = best(SystemClock.elapsedRealtime()) ?: return@post
             val t = c.transportControls
             Log.i(TAG, "media.cmd $action pkg=${c.packageName}")
             when (MediaAction.parse(action, isPlaying(c))) {
@@ -188,5 +211,8 @@ class MediaBridge(private val ctx: Context, private val send: (Message) -> Boole
         }
     }
 
-    private companion object { const val TAG = "MydroidMedia" }
+    private companion object {
+        const val TAG = "MydroidMedia"
+        const val PAUSED_WINDOW_MS = 60_000L
+    }
 }

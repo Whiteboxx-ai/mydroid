@@ -4,6 +4,7 @@ import MydroidCore
 /// Settings that only matter on the Mac. (What the phone must know lives in `SyncSettings`.)
 struct MacPrefs: Codable, Equatable {
     var showBatteryInMenuBar = false
+    var showDockIcon = true
     /// Links from the phone: open in the browser right away (true) or show a banner with Open (false).
     var linksOpenAutomatically = false
     var followFocus = false
@@ -43,6 +44,7 @@ struct MacPrefs: Codable, Equatable {
     init(from d: Decoder) throws {
         let c = try d.container(keyedBy: CodingKeys.self)
         showBatteryInMenuBar = try c.decodeIfPresent(Bool.self, forKey: .showBatteryInMenuBar) ?? false
+        showDockIcon = try c.decodeIfPresent(Bool.self, forKey: .showDockIcon) ?? true
         linksOpenAutomatically = try c.decodeIfPresent(Bool.self, forKey: .linksOpenAutomatically) ?? false
         followFocus = try c.decodeIfPresent(Bool.self, forKey: .followFocus) ?? false
         quietHours = try c.decodeIfPresent(QuietHours.self, forKey: .quietHours) ?? QuietHours()
