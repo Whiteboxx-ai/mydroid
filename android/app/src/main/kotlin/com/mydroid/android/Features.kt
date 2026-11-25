@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.PowerManager
+import android.telephony.TelephonyManager
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.mydroid.android.data.Settings
@@ -27,6 +28,8 @@ data class FeatureReport(
     val backgroundRestricted: Boolean = false,
     val batteryOptimizationExempt: Boolean = false,
     val postNotifications: Boolean = true,
+    val supportsCalls: Boolean = true,
+    val supportsTexts: Boolean = true,
     val photosPartial: Boolean = false,
     val callsMissingOptional: Boolean = false,
     /** CALL_PHONE: "Call from your Mac" (PROTOCOL.md 7.8). */
@@ -125,7 +128,16 @@ object Perms {
 }
 
 object Features {
+    @Suppress("DEPRECATION") // isVoiceCapable and isSmsCapable cover Android 10–14.
     fun report(c: Context, s: Settings, callAudioEver: Boolean = false, instantCopy: Boolean = false): FeatureReport {
+        val telephony = c.getSystemService(TelephonyManager::class.java)
+            ?.takeIf { c.packageManager.hasSystemFeature(PackageManager.FEATURE_TELEPHONY) }
+        val supportsCalls = telephony?.let {
+            if (Build.VERSION.SDK_INT >= 35) it.isDeviceVoiceCapable else it.isVoiceCapable
+        } == true
+        val supportsTexts = telephony?.let {
+            if (Build.VERSION.SDK_INT >= 35) it.isDeviceSmsCapable else it.isSmsCapable
+        } == true
         fun st(enabled: Boolean, ok: Boolean) = when {
             !enabled -> FeatureState.Off
             ok -> FeatureState.On
@@ -135,12 +147,14 @@ object Features {
             states = mapOf(
                 Feature.Notifications to st(s.notifications, Perms.hasNotificationAccess(c)),
                 Feature.Photos to st(s.photos, Perms.hasPhotoAccess(c)),
-                Feature.Calls to st(s.calls, Perms.hasCallBasics(c)),
+                Feature.Calls to st(s.calls && supportsCalls, Perms.hasCallBasics(c)),
                 // Needs no Android permission: select text -> "Send to Mac", the notification button, tile and share target all work.
                 Feature.Clipboard to st(s.clipboard, true),
-                Feature.Sms to st(s.smsHistory, Perms.hasSmsHistoryAccess(c)),
+                Feature.Sms to st(s.smsHistory && supportsTexts, Perms.hasSmsHistoryAccess(c)),
             ),
-            otp = st(s.notifications, Perms.hasSmsAccess(c)),
+            supportsCalls = supportsCalls,
+            supportsTexts = supportsTexts,
+            otp = st(s.notifications && supportsTexts, Perms.hasSmsAccess(c)),
             callAudio = com.mydroid.android.callaudio.CallAudioSetup.status(c, s),
             callAudioEver = callAudioEver || s.callAudio,
             instantCopy = instantCopy,

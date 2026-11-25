@@ -29,6 +29,7 @@ public final class Peer {
     var recvCipher: FrameCipher?
     let connectedAt = Date()
     var lastReceived = Date()
+    var idleProbeSent = false
     var wasAuthenticated = false
     unowned let server: Server
 
@@ -209,12 +210,17 @@ public final class Server {
         delegate?.server(self, listenerChanged: nil, error: error)
     }
 
-    /// PROTOCOL.md 5.2: a ready connection is dropped after 240s without frames, a handshake after 15s.
+    /// PROTOCOL.md 5.2: keep the full receive-idle window for a phone resuming from Android Doze.
     public static let idleTimeout: TimeInterval = 240
     public static let handshakeTimeout: TimeInterval = 15
+    private static let idleProbeDelay: TimeInterval = 100
 
     public static func isIdle(ready: Bool, since: Date, now: Date) -> Bool {
         now.timeIntervalSince(since) > (ready ? idleTimeout : handshakeTimeout)
+    }
+
+    static func shouldProbe(since: Date, now: Date) -> Bool {
+        now.timeIntervalSince(since) >= idleProbeDelay
     }
 
     private func startHeartbeat() {
@@ -230,6 +236,9 @@ public final class Server {
                 if Server.isIdle(ready: ready, since: since, now: now) {
                     self.log("peer timed out")
                     self.close(p)
+                } else if ready && !p.idleProbeSent && Server.shouldProbe(since: since, now: now) {
+                    p.idleProbeSent = true
+                    p.send(Message("ping"))
                 }
             }
         }
@@ -272,7 +281,6 @@ public final class Server {
         peer.connection.receive(minimumIncompleteLength: 1, maximumLength: 256 * 1024) { [weak self, weak peer] data, _, isComplete, error in
             guard let self, let peer, peer.phase != .closed else { return }
             if let data, !data.isEmpty {
-                peer.lastReceived = Date()
                 peer.inbound.append(data)
                 do {
                     while let frame = try peer.inbound.next() {
@@ -328,6 +336,8 @@ public final class Server {
         }
         peer.recvCipher = cipher
         guard let msg = try? Message.decode(plaintext) else { log("undecodable message"); return }
+        peer.lastReceived = Date()
+        peer.idleProbeSent = false
         if peer.phase == .awaitAuth {
             guard msg.type == "auth" else { log("expected auth"); close(peer); return }
             peer.setPhoneName(msg.string("name") ?? msg.string("model") ?? "Android phone")

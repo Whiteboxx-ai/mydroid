@@ -29,6 +29,7 @@ import com.mydroid.android.fix.Oem
 import com.mydroid.android.net.Link
 import com.mydroid.android.net.UiState
 import com.mydroid.android.presence.PresenceStatus
+import com.mydroid.android.presence.Presence
 
 private enum class Tone { Ok, Warn, Quiet }
 
@@ -152,10 +153,10 @@ private fun settingGroups(
                 if (connected) Tone.Ok else Tone.Quiet,
             ))
             if (r.presence != PresenceStatus.Unsupported) {
-                // One row, one Bluetooth approval: battery-saving presence + (Android 13+) unhidden codes from apps.
+                // One row for nearby detection and, where needed, codes from apps.
                 val ready = r.presence == PresenceStatus.Ready
-                val canUnhide = Build.VERSION.SDK_INT >= 33
-                val done = ready && (r.codesFromApps || !canUnhide)
+                val canUnhide = Presence.offerWatchProfile(set?.notifications == true)
+                val done = ready && r.bluetoothOn && (r.codesFromApps || !canUnhide)
                 add(SettingRow(
                     Glyphs.Laptop, "Your Mac nearby",
                     when {
@@ -185,15 +186,23 @@ private fun settingGroups(
                 }
             }
             add(when {
-                r.backgroundRestricted -> SettingRow(Glyphs.Battery, "Stay connected", "Background activity restricted", Tone.Warn, "Fix", a.openBackgroundSettings)
+                r.backgroundRestricted -> SettingRow(Glyphs.Battery, "Stay connected", "Background activity restricted", Tone.Warn, "Fix", a.openAppInfo,
+                    info = Info("Stay connected", Oem.backgroundHelp))
                 killedAt != null -> SettingRow(Glyphs.Battery, "Stay connected", "Mydroid stopped in the background ${ago(killedAt, now)}", Tone.Warn, "Fix", a.openOem)
-                else -> SettingRow(Glyphs.Battery, "Stay connected", "Background activity allowed", Tone.Ok)
+                else -> SettingRow(Glyphs.Battery, "Android background restriction", "None reported", Tone.Quiet)
             })
+            if (Oem.hasSeparateBackgroundControls && !r.backgroundRestricted) {
+                add(SettingRow(
+                    Glyphs.Battery, "${Oem.brandName} battery settings", "Check background activity",
+                    Tone.Quiet, "Open app info", a.openAppInfo,
+                    info = Info("Background activity", Oem.backgroundHelp),
+                ))
+            }
             add(SettingRow(
                 Glyphs.Battery, "Battery optimization",
                 if (r.batteryOptimizationExempt) "Exempt" else "Standard",
-                Tone.Quiet, "Open settings", a.openBatteryOptimization,
-                info = Info("Battery optimization", "If sync stops while your phone is idle, find Mydroid in Android’s battery optimization list and choose Don’t optimize."),
+                Tone.Quiet, if (r.batteryOptimizationExempt) "Open settings" else "Allow while idle", a.openBatteryOptimization,
+                info = Info("Battery optimization", "Exempt shows Android’s battery setting. Allowing sync while idle can increase battery use."),
             ))
             if (!r.backgroundRestricted && autoStartTip && killedAt == null) {
                 add(SettingRow(
@@ -205,12 +214,16 @@ private fun settingGroups(
         }))
 
         // ---- Notifications & codes
-        if (set?.notifications == true) add(SettingGroup("Notifications & codes", buildList {
+        if (set?.notifications == true || (Build.VERSION.SDK_INT >= 33 && !r.postNotifications)) add(SettingGroup("Notifications & codes", buildList {
+            if (Build.VERSION.SDK_INT >= 33 && !r.postNotifications) {
+                add(SettingRow(Icons.Default.Notifications, "Mydroid alerts", "Off", Tone.Quiet, "Allow", a.allowAlerts))
+            }
+            if (set?.notifications != true) return@buildList
             val notifOn = r.state(Feature.Notifications) == FeatureState.On
             add(row(Icons.Default.Notifications, "Notifications", notifOn, "Shown on your Mac", "Needs access", info = if (notifOn) null else Info("Notification access", restricted), run = a.allowNotificationAccess))
-            add(row(Icons.Default.Notifications, "Verification codes", r.otp == FeatureState.On, "Shown on your Mac", "Needs permission",
+            if (r.supportsTexts) add(row(Icons.Default.Notifications, "Verification codes", r.otp == FeatureState.On, "Shown on your Mac", "Needs permission",
                 info = Info("Verification codes", "Mydroid looks for codes in new texts and never stores them."), run = a.allowSms))
-            if (Build.VERSION.SDK_INT >= 35) {
+            if (Presence.offerWatchProfile(true) && r.presence != PresenceStatus.Unsupported) {
                 // Status only; set up through "Your Mac nearby" (same single Bluetooth approval).
                 add(SettingRow(
                     Icons.Default.Notifications, "Codes from apps",
@@ -240,7 +253,7 @@ private fun settingGroups(
         }))
 
         // ---- Calls
-        if (set?.calls == true) add(SettingGroup("Calls", buildList {
+        if (r.supportsCalls && set?.calls == true) add(SettingGroup("Calls", buildList {
             val on = r.state(Feature.Calls) == FeatureState.On
             val full = on && !r.callsMissingOptional
             add(SettingRow(
@@ -292,7 +305,7 @@ private fun settingGroups(
         }))
 
         // ---- Messages
-        if (set?.smsHistory == true) add(SettingGroup("Messages", buildList {
+        if (r.supportsTexts && set?.smsHistory == true) add(SettingGroup("Messages", buildList {
             val on = r.state(Feature.Sms) == FeatureState.On
             add(row(Icons.Default.Email, "Text from your Mac", on, "On", "Needs permission",
                 info = Info("Text from your Mac", "Mydroid reads your texts only when your Mac asks. $restricted"), run = a.allowSmsHistory))

@@ -121,7 +121,7 @@ final class OpenRouterTests: XCTestCase {
         let n = note("com.whatsapp", title: "Maya", text: "hi", message: true, phone: "+919876543210")
         XCTAssertEqual(none.action(for: n), web("https://web.whatsapp.com/send?phone=919876543210"))
         XCTAssertEqual(router("net.whatsapp.WhatsApp").action(for: n),
-                       .macApp(bundleID: "net.whatsapp.WhatsApp", url: URL(string: "whatsapp://send?phone=919876543210")!,
+                       .macApp(bundleID: "net.whatsapp.WhatsApp", url: nil,
                                fallback: URL(string: "https://web.whatsapp.com/send?phone=919876543210")))
         XCTAssertEqual(none.plan(for: n).web, URL(string: "https://web.whatsapp.com/send?phone=919876543210"),
                        "Open on web is the web chat even when the Mac app exists")

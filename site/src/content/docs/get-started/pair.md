@@ -10,6 +10,7 @@ Put your phone and Mac on the same Wi-Fi.
 3. Point the camera at the code.
 4. Check that both screens show the same code, then confirm.
 5. On your Mac, choose what to sync. You can change this later in Settings.
+6. On your phone, follow the prompts for the features you chose. You can skip a step and finish it later in Mydroid’s Settings.
 
 Mydroid then connects on its own whenever you're on the same network, and starts at login on your Mac.
 

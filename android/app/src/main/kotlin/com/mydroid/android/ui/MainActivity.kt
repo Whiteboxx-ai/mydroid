@@ -1,10 +1,14 @@
 package com.mydroid.android.ui
 
 import android.Manifest
+import android.bluetooth.BluetoothAdapter
 import android.content.ComponentName
 import android.content.Intent
+import android.location.LocationManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -42,14 +46,13 @@ class Actions(
     val allowSmsHistory: () -> Unit = {},
     val allowDial: () -> Unit = {},
     val allowAlerts: () -> Unit = {},
-    val openBackgroundSettings: () -> Unit = {},
+    val openAppInfo: () -> Unit = {},
     val openBatteryOptimization: () -> Unit = {},
     val openOem: () -> Unit = {},
     /** Opens Mydroid in Android's Accessibility settings (Instant copy, or to turn a leftover service off). */
     val allowClipboard: () -> Unit = {},
     val setInstantCopy: (Boolean) -> Unit = {},
     val allowPresence: () -> Unit = {},
-    val enableWatchMode: () -> Unit = {},
     /** Opens the system Files app at the Mac's root (PROTOCOL.md 9). */
     val openMacFiles: () -> Unit = {},
     /** Photo picker (images and videos, no permission needed). Results go to the transfer outbox. */
@@ -74,19 +77,16 @@ class Actions(
 )
 
 class MainActivity : ComponentActivity() {
-    private val photoLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { manager().refreshFeatures() }
-    private val callLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { manager().refreshFeatures() }
-    private val smsLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { manager().refreshFeatures() }
-    private val smsHistoryLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { manager().refreshFeatures() }
-    private val dialLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { manager().refreshFeatures() }
-    private val alertLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { manager().refreshFeatures() }
-    /** Which association the Bluetooth permission prompt was for, so granting it continues the same flow. */
+    private val permissionHistory by lazy { getSharedPreferences("permission_requests", MODE_PRIVATE) }
+    private val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions(), ::permissionsReturned)
     private var pendingWatch = false
-    private val btLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+    private val btLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+        permissionsReturned(result)
+        if (Presence.hasPermissions(this)) startAssociation(pendingWatch)
+    }
+    private val bluetoothEnableLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         manager().refreshFeatures()
-        val watch = pendingWatch
-        pendingWatch = false
-        if (Presence.hasPermissions(this)) { if (watch) enableWatchMode() else startAssociation() }
+        if (Presence.bluetoothOn(this)) startAssociation(pendingWatch)
     }
     private val assocLauncher = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
         // The system dialog has closed; whether or not the user said yes, re-read the truth from CompanionDeviceManager.
@@ -94,8 +94,6 @@ class MainActivity : ComponentActivity() {
         manager().refreshPresence(force = true)
         manager().refreshFeatures()
     }
-
-    private val walkAwayLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { manager().refreshFeatures() }
 
     private val mediaPicker = registerForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
         if (uris.isNotEmpty()) manager().postNotice(manager().sendUris(uris))
@@ -132,6 +130,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        pendingWatch = savedInstanceState?.getBoolean("pendingWatch") == true
         enableEdgeToEdge()
         val m = manager()
         m.auth.host = authHost
@@ -144,19 +143,18 @@ class MainActivity : ComponentActivity() {
             scan = ::scan,
             cancelPairing = { m.cancelPairing() },
             allowNotificationAccess = ::openNotificationAccess,
-            allowPhotos = { photoLauncher.launch(Perms.photoPermissions()) },
-            allowSms = { smsLauncher.launch(Manifest.permission.RECEIVE_SMS) },
-            allowCalls = { callLauncher.launch(Perms.callPermissions) },
-            allowSmsHistory = { smsHistoryLauncher.launch(Perms.smsHistoryPermissions) },
-            allowDial = { dialLauncher.launch(Manifest.permission.CALL_PHONE) },
-            allowAlerts = { if (Build.VERSION.SDK_INT >= 33) alertLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) },
-            openBackgroundSettings = ::openBackgroundSettings,
+            allowPhotos = { requestPermissionsFor(Perms.photoPermissions()) },
+            allowSms = { requestPermissionsFor(arrayOf(Manifest.permission.RECEIVE_SMS)) },
+            allowCalls = { requestPermissionsFor(Perms.callPermissions) },
+            allowSmsHistory = { requestPermissionsFor(Perms.smsHistoryPermissions) },
+            allowDial = { requestPermissionsFor(arrayOf(Manifest.permission.CALL_PHONE)) },
+            allowAlerts = { if (Build.VERSION.SDK_INT >= 33) requestPermissionsFor(arrayOf(Manifest.permission.POST_NOTIFICATIONS)) },
+            openAppInfo = ::openAppInfo,
             openBatteryOptimization = ::openBatteryOptimization,
             openOem = { m.markOemOpened(); Oem.openAutoStart(this) },
             allowClipboard = ::openAccessibilitySettings,
             setInstantCopy = { m.setInstantCopy(it) },
             allowPresence = ::allowPresence,
-            enableWatchMode = ::enableWatchMode,
             openMacFiles = {
                 if (!com.mydroid.android.files.MacFiles.openInFiles(this, m.store.macId)) Toast.makeText(this, "Couldn't open Files", Toast.LENGTH_LONG).show()
             },
@@ -165,7 +163,7 @@ class MainActivity : ComponentActivity() {
             paste = { m.postNotice(m.pasteFromClipboard(this)) },
             sendText = { m.postNotice(m.sendText(it, "app")) },
             consumeNotice = { m.consumeNotice() },
-            allowWalkAway = { if (WalkAway.permissions.isNotEmpty()) walkAwayLauncher.launch(WalkAway.permissions) },
+            allowWalkAway = { requestPermissionsFor(WalkAway.permissions) },
             mac = MacActions(
                 lock = { m.mac.lock() }, sleep = { m.mac.sleep() }, ring = { m.mac.toggleRing() },
                 loadShortcuts = { m.mac.loadShortcuts() }, runShortcut = { m.mac.runShortcut(it) }, toggleFavorite = { m.mac.toggleFavorite(it) },
@@ -183,6 +181,11 @@ class MainActivity : ComponentActivity() {
             }
         }
         handleIntent(intent)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putBoolean("pendingWatch", pendingWatch)
+        super.onSaveInstanceState(outState)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -244,10 +247,10 @@ class MainActivity : ComponentActivity() {
         if (i.getBooleanExtra(EXTRA_BACKUP, false)) { i.removeExtra(EXTRA_BACKUP); manager().auth.beginBackup() }
         i.getStringExtra(PresenterNotice.EXTRA_OPEN_REMOTE)?.let { manager().requestRemote(it); i.removeExtra(PresenterNotice.EXTRA_OPEN_REMOTE) }
         when (i.getStringExtra(Fixer.EXTRA_FIX)) {
-            "photos" -> photoLauncher.launch(Perms.photoPermissions())
-            "calls" -> callLauncher.launch(Perms.callPermissions)
-            "sms" -> smsHistoryLauncher.launch(Perms.smsHistoryPermissions)
-            "dial" -> dialLauncher.launch(Manifest.permission.CALL_PHONE)
+            "photos" -> requestPermissionsFor(Perms.photoPermissions())
+            "calls" -> requestPermissionsFor(Perms.callPermissions)
+            "sms" -> requestPermissionsFor(Perms.smsHistoryPermissions)
+            "dial" -> requestPermissionsFor(arrayOf(Manifest.permission.CALL_PHONE))
         }
         i.removeExtra(Fixer.EXTRA_FIX)
     }
@@ -273,18 +276,47 @@ class MainActivity : ComponentActivity() {
         m.startPairing(url)
     }
 
-    private fun openNotificationAccess() {
-        val cn = ComponentName(this, MydroidNotificationListener::class.java)
-        try {
-            if (Build.VERSION.SDK_INT >= 30) {
-                startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
-                    .putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, cn.flattenToString()))
-            } else {
-                startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-            }
-        } catch (e: Exception) {
-            runCatching { startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
+    private fun permissionsReturned(result: Map<String, Boolean>) {
+        val edit = permissionHistory.edit()
+        result.forEach { (permission, granted) ->
+            if (granted) edit.remove(permission) else edit.putBoolean(permission, true)
         }
+        edit.apply()
+        manager().refreshFeatures()
+    }
+
+    private fun requestPermissionsFor(permissions: Array<String>, launch: (Array<String>) -> Unit = { permissionLauncher.launch(it) }) {
+        val missing = permissions.filterNot { Perms.granted(this, it) }
+        if (missing.isEmpty()) {
+            manager().refreshFeatures()
+            return
+        }
+        if (missing.all { permissionHistory.getBoolean(it, false) && !shouldShowRequestPermissionRationale(it) }) {
+            android.app.AlertDialog.Builder(this)
+                .setMessage("Allow access in Android’s settings for Mydroid.")
+                .setNegativeButton("Not now", null)
+                .setPositiveButton("Open app info") { _, _ -> openAppInfo() }
+                .show()
+            return
+        }
+        // Android 14 needs the full photo group to offer the selection UI again.
+        val photoSelection = Build.VERSION.SDK_INT >= 34 && Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED in permissions
+        launch(if (photoSelection) permissions else missing.toTypedArray())
+    }
+
+    private fun openNotificationAccess() {
+        if (Perms.hasNotificationAccess(this)) {
+            manager().refreshFeatures()
+            return
+        }
+        manager().watchFeaturesAfterFix()
+        val listener = ComponentName(this, MydroidNotificationListener::class.java)
+        if (Build.VERSION.SDK_INT >= 30) {
+            val detail = Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
+                .putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, listener.flattenToString())
+            if (openSettings(detail)) return
+        }
+        if (!openSettings(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))) openAppInfo()
     }
 
     /** Opens the Mydroid entry in Accessibility settings where the OS supports it, else the list. */
@@ -298,38 +330,41 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** Bluetooth permission first (in context, with the why on screen), then the one-tap system association dialog. */
+    /** Resume one nearby setup flow after the system grants permission or turns on Bluetooth. */
     private fun allowPresence() {
         if (!Presence.supported(this)) return
-        // One Bluetooth approval for everything: on Android 13+ the watch-profile association covers both
-        // "Mac nearby" (battery) and unhidden codes from apps, so never ask the user twice.
-        if (Build.VERSION.SDK_INT >= 33) { enableWatchMode(); return }
-        if (!Presence.hasPermissions(this)) btLauncher.launch(Presence.permissions) else startAssociation()
-    }
-
-    /** Re-pair with the watch profile so Android stops hiding one-time codes from Mydroid. */
-    private fun enableWatchMode() {
-        if (Build.VERSION.SDK_INT < 33) return
-        if (!Presence.hasPermissions(this)) { pendingWatch = true; btLauncher.launch(Presence.permissions); return }
-        if (Presence.isWatch(this)) {
-            Toast.makeText(this, "Already set up", Toast.LENGTH_SHORT).show()
-            manager().refreshFeatures(); return
+        pendingWatch = Presence.offerWatchProfile(manager().state.value.settings?.notifications == true)
+        if (!Presence.hasPermissions(this)) {
+            requestPermissionsFor(Presence.permissions) { btLauncher.launch(it) }
+        } else {
+            startAssociation(pendingWatch)
         }
-        // One dialog: the watch association also does everything the nearby one did. The old plain
-        // association is removed only after the new one exists, so cancelling loses nothing.
-        startAssociation(watch = true)
     }
 
-    private fun startAssociation(watch: Boolean = false) {
-        if (Build.VERSION.SDK_INT < 31) return
+    private fun startAssociation(watch: Boolean) {
+        if (!Presence.supported(this) || !Presence.hasPermissions(this)) return
         if (!Presence.bluetoothOn(this)) {
-            Toast.makeText(this, "Turn on Bluetooth, then try again", Toast.LENGTH_LONG).show()
-            runCatching { startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS)) }
+            if (runCatching { bluetoothEnableLauncher.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)) }.isFailure) {
+                openSettings(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
+            }
             return
         }
-        if (!watch && Presence.hasAssociation(this)) { manager().refreshPresence(force = true); return }
+        if (Presence.isWatch(this) || (!watch && Presence.hasAssociation(this))) {
+            manager().refreshPresence(force = true)
+            manager().refreshFeatures()
+            return
+        }
+        if (getSystemService(LocationManager::class.java)?.isLocationEnabled == false) {
+            Toast.makeText(this, "Android needs Location on to find nearby devices. Turn it on, then try again.", Toast.LENGTH_LONG).show()
+            openSettings(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+            return
+        }
         Presence.associate(this,
-            launch = { sender -> runCatching { assocLauncher.launch(IntentSenderRequest.Builder(sender).build()) } },
+            launch = { sender ->
+                if (runCatching { assocLauncher.launch(IntentSenderRequest.Builder(sender).build()) }.isFailure) {
+                    Toast.makeText(this, "Couldn’t open nearby setup. Try again.", Toast.LENGTH_LONG).show()
+                }
+            },
             failed = { Toast.makeText(this, it, Toast.LENGTH_LONG).show() },
             watch = watch,
             created = { manager().refreshPresence(force = true) })
@@ -340,18 +375,28 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_BACKUP = "com.mydroid.android.EXTRA_BACKUP"
     }
 
-    private fun openBackgroundSettings() {
+    private fun openSettings(intent: Intent): Boolean = try {
+        startActivity(intent)
+        true
+    } catch (_: android.content.ActivityNotFoundException) {
+        false
+    } catch (_: SecurityException) {
+        false
+    }
+
+    private fun openAppInfo() {
         manager().watchFeaturesAfterFix()
-        startActivity(Oem.appDetails(this))
+        if (!openSettings(Oem.appDetails(this))) {
+            Toast.makeText(this, "Open Android Settings → Apps → Mydroid.", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun openBatteryOptimization() {
         manager().watchFeaturesAfterFix()
-        try {
-            startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
-        } catch (_: android.content.ActivityNotFoundException) {
-            startActivity(Oem.appDetails(this))
-        }
+        if (!getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(packageName) &&
+            openSettings(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.fromParts("package", packageName, null)))
+        ) return
+        if (!openSettings(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))) openAppInfo()
     }
 }
 

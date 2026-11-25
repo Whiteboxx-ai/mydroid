@@ -64,6 +64,7 @@ public struct FeatureStatus: Sendable, Equatable {
     public var calls: FeatureState = .unknown
     public var clipboard: FeatureState = .unknown
     public var backgroundRestricted = false
+    public var wirelessDebugging: Bool?
     public init() {}
 }
 

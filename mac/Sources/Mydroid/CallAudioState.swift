@@ -88,6 +88,7 @@ final class AudioMeters {
 // MARK: Setup flow
 
 enum SetupStage: Equatable {
+    case looking
     case devOptions
     case wirelessDebugging
     case pairing
@@ -111,6 +112,7 @@ final class SetupProgress {
     var stage: SetupStage = .devOptions
     var detail = ""
     var hint: String?
+    var reusedConnection = false
     let service: String
     let password: String
     var phoneName: String
@@ -134,7 +136,7 @@ final class SetupProgress {
 
     var activeIndex: Int {
         switch stage {
-        case .devOptions: return 0
+        case .looking, .devOptions: return 0
         case .wirelessDebugging: return 1
         case .pairing: return 2
         case .checking: return 3

@@ -46,6 +46,8 @@ object Presence {
 
     fun hasPermissions(c: Context) = permissions.all { Perms.granted(c, it) }
 
+    fun offerWatchProfile(notifications: Boolean) = notifications && Build.VERSION.SDK_INT >= 35
+
     private fun cdm(c: Context): CompanionDeviceManager? = c.getSystemService(CompanionDeviceManager::class.java)
     private fun adapter(c: Context): BluetoothAdapter? = c.getSystemService(BluetoothManager::class.java)?.adapter
 

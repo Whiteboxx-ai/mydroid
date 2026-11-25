@@ -516,6 +516,7 @@ public final class Hub: ServerDelegate {
             f.notifications = st("notifications"); f.photos = st("photos"); f.calls = st("calls"); f.clipboard = st("clipboard")
             // Older phones send "backgroundRestricted" when the app is subject to standard battery optimization.
             f.backgroundRestricted = m.bool("backgroundActivityRestricted") ?? false
+            f.wirelessDebugging = m.bool("adbWifi")
             state.features = f
         case "notif.posted":
             if let n = PhoneNotification(fields: m.fields), !state.settings.mutedApps.contains(n.pkg) {

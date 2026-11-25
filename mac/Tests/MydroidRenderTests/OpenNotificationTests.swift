@@ -62,12 +62,12 @@ final class OpenNotificationTests: XCTestCase {
         await settle()
         XCTAssertEqual(opener.opened.count, 1)
         XCTAssertEqual(opener.opened[0].bundleID, "net.whatsapp.WhatsApp")
-        XCTAssertEqual(opener.opened[0].url?.absoluteString, "whatsapp://send?phone=919876543210")
+        XCTAssertNil(opener.opened[0].url)
 
         opener.opened = []; opener.failing = ["net.whatsapp.WhatsApp"]
         m.open(w)
         await settle()
-        XCTAssertEqual(opener.opened.map { $0.url?.absoluteString }, ["whatsapp://send?phone=919876543210", "https://web.whatsapp.com/send?phone=919876543210"])
+        XCTAssertEqual(opener.opened.map { $0.url?.absoluteString }, [nil, "https://web.whatsapp.com/send?phone=919876543210"])
     }
 
     func testChoicesPerApp() async {

@@ -1,8 +1,10 @@
 import Foundation
+import Darwin
 import MydroidCore
 
 // Runs an adb (Android platform-tools). Mydroid has its own adb server on its own port and its own key home, so it
-// never fights a developer's adb on 5037 and never touches their ~/.android.
+// never fights a developer's adb on 5037 or touches their ~/.android. A separate client can
+// talk to a developer server that is already running, without starting or stopping it.
 
 struct AdbResult: Sendable {
     var status: Int32
@@ -29,6 +31,7 @@ protocol AdbControlling: AnyObject {
     var isAvailable: Bool { get }
     func ensureServer() async -> Bool
     func mdnsServices() async -> [AdbMdnsService]
+    func onlineDevices() async -> [AdbParsing.Device]
     func pair(endpoint: String, password: String) async -> AdbResult
     func connect(endpoint: String) async -> AdbResult
     /// `nil` disconnects everything.
@@ -39,20 +42,27 @@ protocol AdbControlling: AnyObject {
     func killServer()
 }
 
+extension AdbControlling {
+    func onlineDevices() async -> [AdbParsing.Device] { [] }
+}
+
 final class AdbClient: AdbControlling, @unchecked Sendable {
     static let defaultPort = 5099
 
     private let executable: URL?
     private let port: Int
     private let home: URL
+    private let existingServer: Bool
     private var serverStarted = false
+    private var clientVersion: Int?
     private let lock = NSLock()
     var log: (String) -> Void = { _ in }
 
-    init(executable: URL? = AdbClient.locate(), port: Int = AdbClient.defaultPort, home: URL) {
+    init(executable: URL? = AdbClient.locate(), port: Int = AdbClient.defaultPort, home: URL, existingServer: Bool = false) {
         self.executable = executable
         self.port = port
         self.home = home
+        self.existingServer = existingServer
         signal(SIGPIPE, SIG_IGN)       // a helper that has gone away must not take the app with it
     }
 
@@ -80,12 +90,47 @@ final class AdbClient: AdbControlling, @unchecked Sendable {
 
     private func makeProcess(_ args: [String]) -> Process? {
         guard let executable else { return nil }
+        if existingServer, args != ["version"], !existingServerIsCompatible() { return nil }
         try? FileManager.default.createDirectory(at: home, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         let p = Process()
         p.executableURL = executable
-        p.arguments = args
+        // An explicit host tells adb to use the existing server, even when it is on localhost.
+        p.arguments = existingServer ? ["-H", "127.0.0.1", "-P", String(port)] + args : args
         p.environment = environment
         return p
+    }
+
+    private func existingServerIsCompatible() -> Bool {
+        // The adb CLI can kill a server if the protocol versions differ. Query the
+        // loopback server directly before letting the CLI touch a developer's session.
+        let fd = socket(AF_INET, SOCK_STREAM, 0)
+        guard fd >= 0 else { return false }
+        defer { close(fd) }
+        var timeout = timeval(tv_sec: 1, tv_usec: 0)
+        _ = setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
+        var address = sockaddr_in()
+        address.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
+        address.sin_family = sa_family_t(AF_INET)
+        address.sin_port = UInt16(port).bigEndian
+        address.sin_addr = in_addr(s_addr: INADDR_LOOPBACK.bigEndian)
+        let connected = withUnsafePointer(to: &address) {
+            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                Darwin.connect(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+            }
+        }
+        guard connected == 0 else { return false }
+        let request = Array("000chost:version".utf8)
+        guard send(fd, request, request.count, 0) == request.count else { return false }
+        var response = [UInt8](repeating: 0, count: 12)
+        guard recv(fd, &response, response.count, MSG_WAITALL) == response.count,
+              response.prefix(8).elementsEqual("OKAY0004".utf8),
+              let remoteVersion = Int(String(decoding: response.suffix(4), as: UTF8.self), radix: 16) else { return false }
+        if let version = lock.withLock({ clientVersion }) { return version == remoteVersion }
+        let output = runSync(["version"], timeout: 2).out
+        let line = output.split(whereSeparator: \.isNewline).first
+        guard let version = line?.split(separator: ".").last.flatMap({ Int($0) }) else { return false }
+        lock.withLock { clientVersion = version }
+        return version == remoteVersion
     }
 
     /// Runs adb and waits (off the main thread). Kills it after `timeout` seconds.
@@ -120,6 +165,7 @@ final class AdbClient: AdbControlling, @unchecked Sendable {
 
     func ensureServer() async -> Bool {
         guard isAvailable else { return false }
+        if existingServer { return await run(["devices"], timeout: 3).ok }
         if lock.withLock({ serverStarted }) {
             // Still answering?
             let r = await run(["get-state"], timeout: 5)
@@ -146,6 +192,11 @@ final class AdbClient: AdbControlling, @unchecked Sendable {
     func mdnsServices() async -> [AdbMdnsService] {
         let r = await run(["mdns", "services"], timeout: 8)
         return r.ok ? AdbParsing.mdnsServices(r.out) : []
+    }
+
+    func onlineDevices() async -> [AdbParsing.Device] {
+        let r = await run(["devices"], timeout: 3)
+        return r.ok ? AdbParsing.devices(r.out).filter { $0.state == "device" } : []
     }
 
     func pair(endpoint: String, password: String) async -> AdbResult {

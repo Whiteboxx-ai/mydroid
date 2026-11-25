@@ -8,6 +8,7 @@ struct CallAudioHooks {
     var phoneName: () -> String = { "phone" }
     /// The phone's IPv4 address on the Mydroid connection, when known.
     var phoneHost: () -> String? = { nil }
+    var wirelessDebugging: () -> Bool? = { nil }
     var openDevOptions: () -> Void = {}
     var sendVerify: (String) -> Void = { _ in }
     /// `settings.callAudio` on the phone.
@@ -67,11 +68,13 @@ final class CallAudioController {
     /// The Mac's microphone is feeding the call right now.
     var micActive = false
     var setup: SetupProgress?
+    private(set) var checkingExistingConnection = false
     let meters = AudioMeters()
     /// Counts and levels from the helper, for the Settings diagnostics line. Never audio.
     private(set) var helperLost = 0
 
     @ObservationIgnored let adb: AdbControlling
+    @ObservationIgnored private let developerAdb: AdbControlling?
     @ObservationIgnored let engine: AudioEngineControlling
     @ObservationIgnored var hooks: CallAudioHooks
     @ObservationIgnored private let defaults: UserDefaults
@@ -81,6 +84,7 @@ final class CallAudioController {
     @ObservationIgnored private var currentLink: AudioLink?
     @ObservationIgnored private var supervisor: Task<Void, Never>?
     @ObservationIgnored private var setupTask: Task<Void, Never>?
+    @ObservationIgnored private var automaticSetup: Task<Void, Never>?
     @ObservationIgnored private var meterTask: Task<Void, Never>?
     @ObservationIgnored private var routeTimeoutTask: Task<Void, Never>?
     @ObservationIgnored private var wake = false
@@ -95,9 +99,11 @@ final class CallAudioController {
     /// Called whenever something the call panel's layout depends on changes.
     @ObservationIgnored var onLayoutChange: (() -> Void)?
 
-    init(adb: AdbControlling, engine: AudioEngineControlling, defaults: UserDefaults, hooks: CallAudioHooks = CallAudioHooks(),
+    init(adb: AdbControlling, developerAdb: AdbControlling? = nil,
+         engine: AudioEngineControlling, defaults: UserDefaults, hooks: CallAudioHooks = CallAudioHooks(),
          timing: CallAudioTiming = .live) {
         self.adb = adb; self.engine = engine; self.defaults = defaults; self.hooks = hooks; self.timing = timing
+        self.developerAdb = developerAdb
         prefs = CallAudioPrefs.load(defaults)
         engine.onConfigurationChange = { [weak self] in self?.audioHardwareChanged() }
     }
@@ -117,7 +123,10 @@ final class CallAudioController {
     var available: Bool { adb.isAvailable }
 
     /// The pending "Hear calls on your Mac" card on the popover.
-    var showsPendingCard: Bool { !prefs.enabled && !prefs.cardDismissed && adb.isAvailable }
+    var showsPendingCard: Bool {
+        !prefs.enabled && prefs.tier != .some(.none) && !prefs.cardDismissed &&
+            !checkingExistingConnection && setup == nil && adb.isAvailable
+    }
 
     func update(_ change: (inout CallAudioPrefs) -> Void) {
         var p = prefs
@@ -128,7 +137,10 @@ final class CallAudioController {
         onLayoutChange?()
     }
 
-    func dismissCard() { update { $0.cardDismissed = true } }
+    func dismissCard() {
+        update { $0.cardDismissed = true }
+        stopAutomaticSetup()
+    }
 
     // MARK: Lifecycle
 
@@ -141,10 +153,16 @@ final class CallAudioController {
 
     /// The Mydroid link came up or went away, or the network changed: look for the phone sooner.
     func linkChanged(connected: Bool) {
-        if connected { wake = true }
+        if connected {
+            wake = true
+            checkForExistingConnection()
+        } else if !prefs.enabled {
+            stopAutomaticSetup()
+        }
     }
 
     func shutdown() {
+        stopAutomaticSetup()
         setupTask?.cancel(); meterTask?.cancel()
         stopSupervisor()
         engine.stop()
@@ -155,6 +173,7 @@ final class CallAudioController {
     // MARK: Setup (8.2)
 
     func beginSetup() {
+        stopAutomaticSetup()
         cancelSetup()
         guard adb.isAvailable else {
             let p = SetupProgress(phoneName: hooks.phoneName())
@@ -163,6 +182,7 @@ final class CallAudioController {
             return
         }
         let p = SetupProgress(phoneName: hooks.phoneName())
+        p.stage = .looking
         setup = p
         setupTask = Task { [weak self] in await self?.driveSetup(p) }
     }
@@ -173,7 +193,9 @@ final class CallAudioController {
     /// Closing the sheet (or Cancel) stops waiting; what's already done stays done.
     func cancelSetup() {
         setupTask?.cancel(); setupTask = nil
-        if let p = setup, p.tier == nil, !prefs.enabled { Task { await adb.disconnect(endpoint: nil) } }
+        if let p = setup, !p.reusedConnection, p.stage != .looking, p.tier == nil, !prefs.enabled {
+            Task { await adb.disconnect(endpoint: nil) }
+        }
         setup = nil
     }
 
@@ -181,6 +203,49 @@ final class CallAudioController {
     func finishSetup() {
         setupTask = nil
         setup = nil
+    }
+
+    private func stopAutomaticSetup() {
+        automaticSetup?.cancel()
+        automaticSetup = nil
+        checkingExistingConnection = false
+    }
+
+    private func checkForExistingConnection() {
+        guard automaticSetup == nil, setup == nil, !prefs.enabled, !prefs.cardDismissed,
+              prefs.tier != .some(.none), available else { return }
+        checkingExistingConnection = true
+        automaticSetup = Task { [weak self] in
+            await self?.enableWhenConnected()
+        }
+    }
+
+    private func enableWhenConnected() async {
+        var backoff = timing.reconnect
+        while !Task.isCancelled, !prefs.enabled, hooks.linkConnected() {
+            if let verified = await reconnectToPhone() {
+                guard !Task.isCancelled, hooks.linkConnected() else { break }
+                hooks.log("verified an existing ADB connection for call audio")
+                checkingExistingConnection = false
+                let progress = SetupProgress(phoneName: hooks.phoneName())
+                await completeSetup(progress, using: verified, allowKeepAliveGrant: false)
+                break
+            }
+            guard !Task.isCancelled else { return }
+            checkingExistingConnection = false
+            try? await Task.sleep(for: .seconds(backoff.next()))
+        }
+        guard !Task.isCancelled else { return }
+        automaticSetup = nil
+        checkingExistingConnection = false
+    }
+
+    func phoneUnpaired() {
+        stopAutomaticSetup()
+        cancelSetup()
+        let wasEnabled = prefs.enabled
+        update { $0.cardDismissed = false; $0.tier = nil; $0.lastHost = nil; $0.lastConnected = nil }
+        if wasEnabled { Task { await undo(announce: false) } }
     }
 
     private func fail(_ p: SetupProgress, _ message: String) {
@@ -192,23 +257,27 @@ final class CallAudioController {
         guard hooks.linkConnected() else {
             return fail(p, "Connect your \(p.phoneName) first.")
         }
-        guard await adb.ensureServer() else {
-            return fail(p, "Couldn\u{2019}t start adb. Reopen Mydroid and try again.")
-        }
         // Take the supervisor out of the way: it would connect to the phone on its own and race this flow.
         stopSupervisor()
-        hooks.openDevOptions()
+        if let existing = await findDeveloperConnection() {
+            p.reusedConnection = true
+            await completeSetup(p, using: existing)
+            return
+        }
+        guard !Task.isCancelled else { return }
+        guard await adb.ensureServer() else {
+            guard !Task.isCancelled else { return }
+            return fail(p, "Couldn\u{2019}t start adb. Reopen Mydroid and try again.")
+        }
+        guard !Task.isCancelled else { return }
         let began = Date()
         var pairHost: String?
+        var triedEndpoints: Set<String> = []
 
         // 1 and 2: Developer options, Wireless debugging, QR code scanned.
         while !Task.isCancelled {
             let services = await adb.mdnsServices()
-            if p.stage == .devOptions,
-               let phoneHost = hooks.phoneHost(),
-               services.contains(where: { $0.isConnect && $0.host == phoneHost }) {
-                p.stage = .wirelessDebugging
-            }
+            guard !Task.isCancelled else { return }
             if let pair = services.first(where: { $0.isPairing && $0.name == p.service }) {
                 p.stage = .pairing
                 p.detail = "Pairing\u{2026}"
@@ -218,6 +287,24 @@ final class CallAudioController {
                 }
                 pairHost = pair.host
                 break
+            }
+            if let host = hooks.phoneHost(),
+               let service = services.first(where: { $0.isConnect && $0.host == host && !triedEndpoints.contains($0.endpoint) }) {
+                triedEndpoints.insert(service.endpoint)
+                if case let .success(existing) = await connectVerified(host: host, port: service.port) {
+                    p.reusedConnection = true
+                    await completeSetup(p, using: existing)
+                    return
+                }
+            }
+            guard !Task.isCancelled else { return }
+            let wirelessOn = hooks.wirelessDebugging() == true ||
+                services.contains { $0.isConnect && $0.host == hooks.phoneHost() }
+            if wirelessOn {
+                p.stage = .wirelessDebugging
+            } else if p.stage == .looking {
+                p.stage = .devOptions
+                if hooks.wirelessDebugging() == false { hooks.openDevOptions() }
             }
             if p.hint == nil, Date().timeIntervalSince(began) > timing.hintAfter {
                 p.hint = "After scanning, keep Wireless debugging on and both devices on the same Wi\u{2011}Fi."
@@ -253,16 +340,27 @@ final class CallAudioController {
                 return fail(p, "Paired, but couldn\u{2019}t connect. Keep Wireless debugging on.")
             }
         }
-        p.detail = "Allowing Mydroid to keep this on\u{2026}"
-        let grant = await adb.shell(serial: connected.serial, connected.package.grantCommand, timeout: 15)
-        hooks.log("keep-alive grant \(grant.ok ? "accepted" : "refused")")
+        await completeSetup(p, using: connected)
+    }
 
+    private func completeSetup(_ p: SetupProgress, using connected: VerifiedAdbConnection, allowKeepAliveGrant: Bool = true) async {
+        guard !Task.isCancelled else { return }
+        p.stage = .checking
+        var keepAliveGranted = prefs.keepAliveGranted
+        if allowKeepAliveGrant, connected.client === adb {
+            let grant = await adb.shell(serial: connected.serial, connected.package.grantCommand, timeout: 15)
+            if Task.isCancelled {
+                if grant.ok && !keepAliveGranted { _ = await adb.shell(serial: connected.serial, connected.package.revokeCommand, timeout: 10) }
+                return
+            }
+            keepAliveGranted = grant.ok
+            hooks.log("keep-alive grant \(grant.ok ? "accepted" : "refused")")
+        }
         // Turn it on and let the helper tell us what the phone can do.
         connection = connected
-        update { $0.enabled = true; $0.keepAliveGranted = grant.ok; $0.lastHost = host; $0.lastConnected = Date(); $0.tier = nil }
+        update { $0.enabled = true; $0.keepAliveGranted = keepAliveGranted; $0.lastHost = connected.host; $0.lastConnected = Date(); $0.tier = nil }
         hooks.setPhoneSetting(true)
         adbState = .connected
-        p.stage = .checking
         let before = tierEvents
         startSupervisor()
         let deadline = Date().addingTimeInterval(timing.tierWait)
@@ -282,17 +380,20 @@ final class CallAudioController {
     // MARK: Turn off (8.2.6)
 
     /// Disconnect, revoke the grant, tell the phone to stop keeping wireless debugging on.
-    func turnOff() { Task { await undo(announce: true) } }
+    func turnOff() {
+        dismissCard()
+        Task { await undo(announce: true) }
+    }
 
     private func undo(announce: Bool) async {
         stopSupervisor()
         engine.stop()
         stopMeters()
         route = .phone
-        if let connection, await adb.isOnline(serial: connection.serial) {
-            _ = await adb.shell(serial: connection.serial, connection.package.revokeCommand, timeout: 10)
+        if let connection, prefs.keepAliveGranted, await connection.client.isOnline(serial: connection.serial) {
+            _ = await connection.client.shell(serial: connection.serial, connection.package.revokeCommand, timeout: 10)
         }
-        await adb.disconnect(endpoint: nil)
+        if connection?.client === adb { await adb.disconnect(endpoint: nil) }
         connection = nil
         hooks.setPhoneSetting(false)
         adbState = .off
@@ -306,7 +407,9 @@ final class CallAudioController {
     enum ConnectFailure: Error, Equatable { case connect, noAnswer, linkDown }
 
     private struct VerifiedAdbConnection {
+        let client: AdbControlling
         let serial: String
+        let host: String
         let package: CallAudioAndroidPackage
     }
 
@@ -315,22 +418,72 @@ final class CallAudioController {
         let endpoint = "\(host):\(port)"
         let r = await adb.connect(endpoint: endpoint)
         guard AdbParsing.connectSucceeded(r.text) else { return .failure(.connect) }
-        guard hooks.linkConnected() else { await adb.disconnect(endpoint: endpoint); return .failure(.linkDown) }
+        let verified = await verify(adb, serial: endpoint, host: host)
+        if case .failure = verified { await adb.disconnect(endpoint: endpoint) }
+        return verified
+    }
+
+    private func verify(_ client: AdbControlling, serial: String, host: String?) async -> Result<VerifiedAdbConnection, ConnectFailure> {
+        guard hooks.linkConnected(), !Task.isCancelled else { return .failure(.linkDown) }
         let nonce = MydroidCrypto.randomBytes(16).hex
         hooks.sendVerify(nonce)
         for _ in 0..<timing.verifyTries {
             try? await Task.sleep(for: timing.verifyStep)
             if Task.isCancelled { break }
             for package in CallAudioAndroidPackage.allCases where !Task.isCancelled {
-                let f = await adb.shell(serial: endpoint, "cat \(package.verifyPath)", timeout: 8)
+                let f = await client.shell(serial: serial, "cat \(package.verifyPath)", timeout: 8)
                 if !Task.isCancelled, f.ok, f.out.trimmingCharacters(in: .whitespacesAndNewlines) == nonce {
-                    return .success(VerifiedAdbConnection(serial: endpoint, package: package))
+                    let verifiedHost: String?
+                    if let host { verifiedHost = host }
+                    else { verifiedHost = await phoneAddress(client, serial: serial) }
+                    guard let host = verifiedHost, !Task.isCancelled else { return .failure(.connect) }
+                    return .success(VerifiedAdbConnection(client: client, serial: serial, host: host, package: package))
                 }
             }
         }
-        // Never said yes: don't leave a shell open to a device we couldn't identify.
-        await adb.disconnect(endpoint: endpoint)
         return .failure(.noAnswer)
+    }
+
+    private func phoneAddress(_ client: AdbControlling, serial: String) async -> String? {
+        // The ADB transport can stay online even when Bonjour and an IPv4 Mydroid address are absent.
+        for endpoint in NetworkInfo.addresses(port: 0) where !Task.isCancelled {
+            let macHost = String(endpoint.dropLast(2))
+            let route = await client.shell(serial: serial, "ip -4 route get \(macHost)", timeout: 3)
+            let fields = route.out.split(whereSeparator: \.isWhitespace)
+            if route.ok, let index = fields.firstIndex(of: "src"), index + 1 < fields.count,
+               LocalAddress.reaching(host: String(fields[index + 1])) == macHost {
+                return String(fields[index + 1])
+            }
+        }
+        return nil
+    }
+
+    private func findDeveloperConnection() async -> VerifiedAdbConnection? {
+        guard let developerAdb, hooks.linkConnected(), !Task.isCancelled else { return nil }
+        let devices = await developerAdb.onlineDevices()
+        guard !devices.isEmpty, !Task.isCancelled else { return nil }
+        let services = await developerAdb.mdnsServices().filter(\.isConnect)
+        let phoneHost = hooks.phoneHost()
+        for device in devices where !Task.isCancelled {
+            let serial = device.serial
+            let serviceSerial = serial.hasSuffix(".") ? String(serial.dropLast()) : serial
+            let serviceSuffix = "._adb-tls-connect._tcp"
+            let host: String?
+            if serviceSerial.hasSuffix(serviceSuffix) {
+                let name = String(serviceSerial.dropLast(serviceSuffix.count))
+                host = phoneHost ?? services.first(where: { $0.name == name })?.host
+            } else {
+                let endpoint = serial.split(separator: ":")
+                guard endpoint.count == 2, UInt16(endpoint[1]) != nil else { continue }
+                let octets = endpoint[0].split(separator: ".", omittingEmptySubsequences: false)
+                guard octets.count == 4, octets.allSatisfy({ UInt8($0) != nil }) else { continue }
+                host = String(endpoint[0])
+            }
+            if case let .success(verified) = await verify(developerAdb, serial: serial, host: host) {
+                return verified
+            }
+        }
+        return nil
     }
 
     // MARK: Supervisor: keep adb connected and the helper running
@@ -367,7 +520,7 @@ final class CallAudioController {
                 await runHelper(connection: connection)
                 if Task.isCancelled { break }
                 if Date().timeIntervalSince(started) > 60 { helperBackoff.reset() }
-                if await adb.isOnline(serial: connection.serial) {
+                if await connection.client.isOnline(serial: connection.serial) {
                     await sleepOrWake(helperBackoff.next())
                     continue
                 }
@@ -391,6 +544,11 @@ final class CallAudioController {
 
     /// Finds the phone's `_adb-tls-connect` service (its port changes every time wireless debugging toggles) and connects.
     private func reconnectToPhone() async -> VerifiedAdbConnection? {
+        if let verified = await findDeveloperConnection() {
+            update { $0.lastHost = verified.host }
+            return verified
+        }
+        guard !Task.isCancelled else { return nil }
         guard await adb.ensureServer() else { return nil }
         let known = hooks.phoneHost() ?? prefs.lastHost
         let services = await adb.mdnsServices().filter(\.isConnect)
@@ -409,12 +567,11 @@ final class CallAudioController {
 
     private func runHelper(connection: VerifiedAdbConnection) async {
         let serial = connection.serial
-        let host = serial.split(separator: ":").first.map(String.init) ?? serial
-        guard let macHost = LocalAddress.reaching(host: host) else { hooks.log("no route to the phone for audio"); return }
+        guard let macHost = LocalAddress.reaching(host: connection.host) else { hooks.log("no route to the phone for audio"); return }
         let key = MydroidCrypto.randomBytes(32)
         guard let link = try? AudioLink(key: key) else { hooks.log("couldn't open the audio socket"); return }
         link.start()
-        let helper = adb.makeHelper(serial: serial, package: connection.package)
+        let helper = connection.client.makeHelper(serial: serial, package: connection.package)
         helper.onLine = { [weak self] line in
             guard let ev = HelperProtocol.parse(line: line) else { return }
             Task { @MainActor in self?.handle(ev) }
@@ -444,6 +601,7 @@ final class CallAudioController {
     private func handle(_ ev: HelperEvent) {
         switch ev {
         case let .tier(t):
+            hooks.log("phone reported call audio tier \(t.rawValue)")
             update { $0.tier = t }
             tierEvents += 1
             onLayoutChange?()

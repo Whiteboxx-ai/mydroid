@@ -121,4 +121,12 @@ final class NotificationModelTests: XCTestCase {
         XCTAssertFalse(Server.isIdle(ready: false, since: now.addingTimeInterval(-14), now: now))
         XCTAssertTrue(Server.isIdle(ready: false, since: now.addingTimeInterval(-16), now: now))
     }
+
+    func testMacProbesOnlyAfterMissingThePhoneHeartbeat() {
+        let lastFrame = Date()
+        let probe = lastFrame.addingTimeInterval(100)
+        XCTAssertFalse(Server.shouldProbe(since: lastFrame, now: lastFrame.addingTimeInterval(99)))
+        XCTAssertTrue(Server.shouldProbe(since: lastFrame, now: probe))
+        XCTAssertFalse(Server.isIdle(ready: true, since: lastFrame, now: probe.addingTimeInterval(15)))
+    }
 }

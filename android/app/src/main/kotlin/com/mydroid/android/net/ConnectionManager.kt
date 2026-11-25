@@ -306,6 +306,10 @@ class ConnectionManager(private val app: Application) {
                     goDormant("no Wi-Fi or ethernet")
                     continue
                 }
+                if (networkBlocked) {
+                    goDormant("Android paused network access")
+                    continue
+                }
                 val connected = runPaired()
                 if (connected) {
                     backoff.reset(); failures = 0; waitFor(1_000)
@@ -392,7 +396,7 @@ class ConnectionManager(private val app: Application) {
         } else scheduleParkCheck()
     }
 
-    /** Found elsewhere, Wi-Fi appeared, unlock, app open: leave the parked state for another 2 min window. */
+    /** A network or device wake event gives a parked connection another retry window. */
     fun unpark(reason: String, force: Boolean = false) {
         val now = System.currentTimeMillis()
         if (!force && !presence.parked(now)) return
@@ -1109,6 +1113,7 @@ class ConnectionManager(private val app: Application) {
     // ---------------------------------------------------------------- network changes
 
     private var lastNet: Network? = null
+    @Volatile private var networkBlocked = false
     private var sawFirstNetwork = false
     @Volatile private var pairingInFlight = false
 
@@ -1118,6 +1123,7 @@ class ConnectionManager(private val app: Application) {
                 override fun onAvailable(network: Network) {
                     val prev = lastNet
                     lastNet = network
+                    if (prev != network) networkBlocked = false
                     CallAudioSetup.keepAlive(app, settings) // Wi-Fi connect: Android may have switched Wireless debugging off
                     // Android reports the current network right after registering. That isn't a change.
                     if (!sawFirstNetwork) { sawFirstNetwork = true; return }
@@ -1128,7 +1134,19 @@ class ConnectionManager(private val app: Application) {
                 override fun onLost(network: Network) {
                     if (network == lastNet) {
                         lastNet = null
+                        networkBlocked = false
                         networkChanged(closeSession = true)
+                    }
+                }
+
+                override fun onBlockedStatusChanged(network: Network, blocked: Boolean) {
+                    if (network != lastNet || blocked == networkBlocked) return
+                    networkBlocked = blocked
+                    android.util.Log.i(TAG, "Android network access blocked=$blocked")
+                    if (blocked) {
+                        if (!pairingInFlight) racer?.cancel()
+                    } else {
+                        mainHandler.post { resumeConnection("Android restored network access") }
                     }
                 }
             })
@@ -1149,18 +1167,30 @@ class ConnectionManager(private val app: Application) {
 
     // ---------------------------------------------------------------- screen state
 
+    /** Screen wake, Doze exit or network unblock: check the existing session or reconnect immediately. */
+    private fun resumeConnection(reason: String) {
+        if (!store.isPaired || pairingInFlight || networkBlocked || !lanAvailable()) return
+        unpark(reason)
+        val session = sess?.session
+        if (session != null) {
+            session.checkLiveness()
+        } else {
+            backoffReset = true
+            poke()
+        }
+    }
+
     private fun registerScreenReceiver() {
         val r = object : BroadcastReceiver() {
             override fun onReceive(c: Context, i: Intent) {
                 when (i.action) {
-                    // Broadcasts arrive on the main thread; heartbeatChanged(pingNow) writes to the socket.
-                    Intent.ACTION_SCREEN_ON -> { screenOn = true; writer.execute { runCatching { sess?.session?.heartbeatChanged(pingNow = true) } }; wakeUp("screen on") }
-                    Intent.ACTION_SCREEN_OFF -> { screenOn = false; writer.execute { runCatching { sess?.session?.heartbeatChanged() } } }
+                    Intent.ACTION_SCREEN_ON -> {
+                        screenOn = true
+                        resumeConnection("screen on")
+                    }
+                    Intent.ACTION_SCREEN_OFF -> screenOn = false
                     PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED -> {
-                        if (!c.getSystemService(PowerManager::class.java).isDeviceIdleMode && !isConnected) {
-                            backoffReset = true
-                            poke()
-                        }
+                        if (!c.getSystemService(PowerManager::class.java).isDeviceIdleMode) resumeConnection("Doze ended")
                     }
                     // Settings may have changed while the phone was in use elsewhere (e.g. battery, permissions).
                     Intent.ACTION_USER_PRESENT -> { auth.onUserPresent(); unpark("user unlocked"); wakeUp("user present"); writer.execute { runCatching { refreshFeatures() } } }

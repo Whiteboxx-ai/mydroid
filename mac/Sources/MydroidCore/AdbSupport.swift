@@ -53,14 +53,25 @@ public enum AdbParsing {
         return o.contains("connected to") && !o.contains("failed") && !o.contains("cannot")
     }
 
-    public struct Device: Equatable, Sendable { public var serial: String; public var state: String }
+    public struct Device: Equatable, Sendable {
+        public var serial: String
+        public var state: String
+
+        public init(serial: String, state: String) {
+            self.serial = serial
+            self.state = state
+        }
+    }
 
     /// Parses `adb devices`.
     public static func devices(_ output: String) -> [Device] {
         output.split(whereSeparator: \.isNewline).dropFirst().compactMap { line in
-            let p = line.split(whereSeparator: { $0 == "\t" || $0 == " " })
+            // The tab separates the serial from its state. A discovered service name can contain spaces.
+            let tabFields = line.split(separator: "\t", maxSplits: 1)
+            let p = tabFields.count == 2 ? tabFields : line.split(separator: " ", maxSplits: 1)
             guard p.count >= 2 else { return nil }
-            return Device(serial: String(p[0]), state: String(p[1]))
+            guard let state = p[1].split(whereSeparator: \.isWhitespace).first else { return nil }
+            return Device(serial: String(p[0]), state: String(state))
         }
     }
 }

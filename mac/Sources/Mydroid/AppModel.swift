@@ -111,6 +111,7 @@ final class AppModel {
     @ObservationIgnored private var lowBattery = LowBatteryTracker()
     @ObservationIgnored private var knownAppsSave: Task<Void, Never>?
     @ObservationIgnored var openWindowAction: ((String) -> Void)?
+    @ObservationIgnored weak var menuBarWindow: NSWindow?
     @ObservationIgnored let notifier = Notifier()
     /// Opens URLs and Mac apps. Replaced by a recorder in tests.
     @ObservationIgnored var opener: MacOpener = WorkspaceOpener()
@@ -181,7 +182,8 @@ final class AppModel {
         calls = CallsModel(hub: hub)
         files = FilesModel(hub: hub, support: support)
         let adb = AdbClient(home: support.appendingPathComponent("adb-home", isDirectory: true))
-        callAudio = CallAudioController(adb: adb, engine: CallAudioEngine(), defaults: defaults)
+        let developerAdb = AdbClient(port: 5037, home: support, existingServer: true)
+        callAudio = CallAudioController(adb: adb, developerAdb: developerAdb, engine: CallAudioEngine(), defaults: defaults)
         let ring = RingController()
         self.ring = ring
         let remote = RemoteController(hub: hub)
@@ -362,6 +364,7 @@ final class AppModel {
             linkConnected: { [weak self] in self?.state.link == .connected },
             phoneName: { [weak self] in self?.state.phone?.name ?? "phone" },
             phoneHost: { [weak self] in self?.state.phoneHost },
+            wirelessDebugging: { [weak self] in self?.state.features.wirelessDebugging },
             openDevOptions: { [weak self] in self?.hub.fix(.devoptions) },
             sendVerify: { [weak self] nonce in self?.hub.sendAdbVerify(nonce: nonce) },
             setPhoneSetting: { [weak self] on in self?.updateSettings { $0.callAudio = on } },
@@ -507,6 +510,7 @@ final class AppModel {
             lastLink = s.link
             if s.link != .connected { findingPhone = false; clipboard.stop() }
             callAudio.linkChanged(connected: s.link == .connected)
+            if s.link == .unpaired { callAudio.phoneUnpaired() }
         }
         if setupStep == .scan, s.pairing?.confirmCode != nil { setupStep = .confirm; bringSetupToFront() }
         if setupStep == .confirm, s.pairing?.confirmCode == nil, s.link != .connected { setupStep = .scan }
@@ -891,7 +895,6 @@ final class AppModel {
     }
 
     func unpair() {
-        if callAudio.enabled { callAudio.turnOff() }
         lowBattery.reset()
         hub.unpair()
         notifier.retractAll()
@@ -940,6 +943,7 @@ final class AppModel {
 
     /// The guided "Hear calls on your Mac" sheet.
     func openCallAudioSetup() {
+        closeMenuBarWindow()
         callAudio.beginSetup()
         openWindowAction?("callaudio")
         NSApp.activate(ignoringOtherApps: true)
@@ -950,9 +954,14 @@ final class AppModel {
     /// "Open Mydroid": the full window, in the Dock and Cmd-Tab while it is open.
     func openMainWindow(_ section: MainSection? = nil) {
         if let section { self.section = section }
+        closeMenuBarWindow()
         NSApp.setActivationPolicy(.regular)
         openWindowAction?("main")
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func closeMenuBarWindow() {
+        if let menuBarWindow, menuBarWindow.isVisible { menuBarWindow.close() }
     }
 
     func mainWindowAppeared() {

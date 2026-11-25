@@ -1,6 +1,5 @@
 package com.mydroid.android.ui
 
-import android.text.format.DateUtils
 import android.os.Build
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -18,11 +17,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -32,6 +29,7 @@ import com.mydroid.android.*
 import com.mydroid.android.fix.Oem
 import com.mydroid.android.net.Link
 import com.mydroid.android.net.UiState
+import com.mydroid.android.presence.Presence
 import com.mydroid.android.presence.PresenceStatus
 import kotlinx.coroutines.delay
 
@@ -226,124 +224,128 @@ internal fun ConfirmScreen(s: UiState, a: Actions) {
 
 private class Step(
     val id: String, val icon: ImageVector, val title: String, val why: String,
-    val button: String, val done: Boolean, val info: Info? = null, val optional: Boolean = false, val action: () -> Unit,
+    val button: String, val info: Info? = null, val action: () -> Unit,
 )
 
 private const val RESTRICTED = "If Android says it's restricted, open Mydroid's app info, tap ⋮ and choose Allow restricted settings."
 
-@Composable
 private fun buildSteps(s: UiState, a: Actions): List<Step> {
-    val ctx = LocalContext.current
     val set = s.settings ?: return emptyList()
     val r = s.report
+    val watch = Presence.offerWatchProfile(set.notifications)
     return buildList {
-        if (set.notifications) add(Step("notif", Icons.Default.Notifications, "Notifications", "Reply to messages from your Mac", "Allow", r.state(Feature.Notifications) == FeatureState.On,
-            info = Info("Notifications", "Mydroid mirrors your notifications to your Mac so you can reply there. $RESTRICTED"), action = a.allowNotificationAccess))
-        if (set.notifications) add(Step("otp", Icons.Default.Notifications, "Verification codes", "Show one-time codes on your Mac", "Allow", r.otp == FeatureState.On,
-            info = Info("Verification codes", "Android hides one-time codes from notifications, so Mydroid looks for them in new texts. It never stores them. $RESTRICTED"), action = a.allowSms))
-        if (set.photos) add(Step("photos", Glyphs.Photo, "Camera roll", if (r.photosPartial) "Only some photos are shared" else "Sync new photos to your Mac", if (r.photosPartial) "Allow all" else "Allow",
-            r.state(Feature.Photos) == FeatureState.On && !r.photosPartial,
-            info = Info("Camera roll", "New photos land on your Mac automatically, and you can browse your camera roll there. Choose Allow all so new photos sync."), action = a.allowPhotos))
-        if (set.calls) add(Step("calls", Icons.Default.Call, "Calls", "See and answer calls on your Mac", "Allow", r.state(Feature.Calls) == FeatureState.On && !r.callsMissingOptional, action = a.allowCalls))
-        if (set.calls) add(Step("dial", Icons.Default.Call, "Call from your Mac", "Start calls from your Mac", "Allow", r.dial,
-            info = Info("Call from your Mac", "Your phone places the call. Audio stays on your phone."), action = a.allowDial))
-        if (set.smsHistory) add(Step("sms", Icons.Default.Email, "Text from your Mac", "Read and send texts from your Mac", "Allow", r.state(Feature.Sms) == FeatureState.On,
-            info = Info("Text from your Mac", "Mydroid reads your texts only when your Mac asks. $RESTRICTED"), action = a.allowSmsHistory))
-        if (Build.VERSION.SDK_INT >= 33) add(Step("alerts", Icons.Default.Info, "Alerts", "Hear about problems", "Allow", r.postNotifications, action = a.allowAlerts))
-        if (r.presence != PresenceStatus.Unsupported) add(Step("presence", Glyphs.Laptop, "Your Mac nearby",
-            when {
-                !r.bluetoothOn -> "Turn on Bluetooth first"
-                Build.VERSION.SDK_INT >= 33 -> "Saves battery, shows codes from apps"
-                else -> "Saves battery"
-            },
-            if (r.presence == PresenceStatus.NeedsPermission) "Allow Bluetooth" else "Choose your Mac",
-            r.presence == PresenceStatus.Ready && (r.codesFromApps || Build.VERSION.SDK_INT < 33),
-            info = Info(
-                "Your Mac nearby",
-                "Mydroid listens for your Mac's Bluetooth signal, never your location. Keep your Mac awake and nearby, then pick it." +
-                    if (Build.VERSION.SDK_INT >= 33) " Android's dialog calls it a “watch”; that's what lets codes from apps through." else "",
-            ), action = a.allowPresence))
-        if (r.backgroundRestricted) add(Step("battery", Glyphs.Battery, "Stay connected", "Allow background activity in Battery settings", "Open settings", false, action = a.openBackgroundSettings))
-        // Android can't read OEM auto-start switches, so only ask when there's evidence the OEM
-        // actually closed Mydroid since the user last looked. Otherwise it's an optional tip.
-        if (!r.backgroundRestricted && Oem.autoStartIntent(ctx) != null) {
-            val killedAt = remember(s.oemOpenedAt) { Oem.needsAutoStart(ctx, s.oemOpenedAt) }
-            if (killedAt != null) {
-                add(Step("oem", Icons.Default.Settings, "Allow auto-start",
-                    "Mydroid stopped in the background ${DateUtils.getRelativeTimeSpanString(killedAt)}",
-                    "Open settings", done = false, info = Info("Auto-start", "Turn Mydroid on in the ${Oem.brandName} auto-launch list so it stays connected."), action = a.openOem))
-            } else if (s.oemOpenedAt == 0L) {
-                add(Step("oem", Icons.Default.Settings, "Auto-start", "Optional",
-                    "Open settings", done = false, optional = true,
-                    info = Info("Auto-start", "Some ${Oem.brandName} phones close background apps anyway. Android can't check this setting, so Mydroid only asks again if it gets closed."), action = a.openOem))
-            }
+        if (set.notifications && r.state(Feature.Notifications) != FeatureState.On) {
+            add(Step("notif", Icons.Default.Notifications, "Notifications", "See and reply to notifications on your Mac", "Open notification access",
+                action = a.allowNotificationAccess))
+        }
+        if (set.photos && r.state(Feature.Photos) != FeatureState.On) {
+            add(Step("photos", Glyphs.Photo, "Camera roll", "Sync new photos to your Mac", "Allow",
+                info = Info("Camera roll", "Choose all photos for automatic sync. You can also share selected photos."), action = a.allowPhotos))
+        }
+        if (r.supportsCalls && set.calls && r.state(Feature.Calls) != FeatureState.On) {
+            add(Step("calls", Icons.Default.Call, "Calls", "See and answer calls on your Mac", "Allow", action = a.allowCalls))
+        }
+        if (r.supportsTexts && set.smsHistory && r.state(Feature.Sms) != FeatureState.On) {
+            add(Step("sms", Icons.Default.Email, "Text from your Mac", "Read and send texts from your Mac", "Allow",
+                info = Info("Text from your Mac", "Mydroid reads your texts when your Mac asks."), action = a.allowSmsHistory))
+        }
+        if (r.presence != PresenceStatus.Unsupported &&
+            (r.presence != PresenceStatus.Ready || !r.bluetoothOn || (watch && !r.codesFromApps))) {
+            add(Step("presence", Glyphs.Laptop, "Your Mac nearby",
+                if (watch) "Save battery and show codes from apps" else "Help your phone reconnect when your Mac is near",
+                when {
+                    r.presence == PresenceStatus.NeedsPermission -> "Allow Nearby devices"
+                    !r.bluetoothOn -> "Turn on Bluetooth"
+                    else -> "Choose your Mac"
+                },
+                info = Info("Your Mac nearby", if (watch) "Android calls your Mac a watch in the approval dialog." else "Keep your Mac awake and nearby."),
+                action = a.allowPresence))
+        }
+        if (r.supportsTexts && set.notifications && r.otp != FeatureState.On) {
+            add(Step("otp", Icons.Default.Notifications, "Codes from texts", "Show one-time codes from new texts", "Allow",
+                info = Info("Codes from texts", "Mydroid looks for codes in new texts and never stores them."), action = a.allowSms))
+        }
+        if (r.supportsCalls && set.calls && !r.dial) {
+            add(Step("dial", Icons.Default.Call, "Call from your Mac", "Start calls from your Mac", "Allow",
+                info = Info("Call from your Mac", "Your phone places the call and carries the audio."), action = a.allowDial))
+        }
+        if (Build.VERSION.SDK_INT >= 33 && !r.postNotifications) {
+            add(Step("alerts", Icons.Default.Info, "Mydroid alerts", "See received files and approve code fills", "Allow", action = a.allowAlerts))
+        }
+        if (r.backgroundRestricted) {
+            add(Step("battery", Glyphs.Battery, "Stay connected", Oem.backgroundHelp, "Open app info", action = a.openAppInfo))
+        }
+        if (Oem.hasSeparateBackgroundControls && !r.batteryOptimizationExempt) {
+            add(Step("idle", Glyphs.Battery, "Sync while your phone is locked", "Allow Mydroid to run while Android is idle.",
+                "Allow while idle", info = Info("Battery optimization", "This can increase battery use."), action = a.openBatteryOptimization))
         }
     }
 }
 
 @Composable
 internal fun PermissionsScreen(s: UiState, a: Actions) {
+    var skipped by rememberSaveable { mutableStateOf(emptyArray<String>()) }
+    var triedNotificationAccess by rememberSaveable { mutableStateOf(false) }
     val steps = buildSteps(s, a)
-    val current = steps.firstOrNull { !it.done && !it.optional }
+    val current = steps.firstOrNull { it.id !in skipped }
+    val waiting = s.settings == null
     Column(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 24.dp)) {
         Spacer(Modifier.height(24.dp))
         Text("Paired with ${s.macName}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.height(4.dp))
         Text(
-            if (s.settings == null) "One moment…" else if (current == null) "All set" else "Finish setup",
+            if (waiting) "One moment…" else if (current == null) "All set" else "Finish setup",
             style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.SemiBold,
         )
         Spacer(Modifier.height(20.dp))
-        if (s.settings == null) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                Spacer(Modifier.width(12.dp))
-                Text("Waiting for your Mac…", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            when {
+                waiting -> Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(12.dp))
+                    Text("Waiting for your Mac…", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                current != null -> {
+                    StepCard(current) {
+                        if (current.id == "notif") triedNotificationAccess = true
+                        current.action()
+                    }
+                    if (current.id == "notif" && triedNotificationAccess && Build.VERSION.SDK_INT >= 33) {
+                        Text("If Android says access is restricted, open App info and tap ⋮ → Allow restricted settings. Then try again.")
+                        TextButton(onClick = a.openAppInfo) { Text("Open app info") }
+                    }
+                }
+                steps.isNotEmpty() -> Text("You can finish skipped steps in Settings.")
             }
         }
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            steps.forEach { st -> StepCard(st, isCurrent = st === current) }
-            Spacer(Modifier.height(8.dp))
-        }
-        Button(onClick = a.finishSetup, modifier = Modifier.fillMaxWidth().height(56.dp).padding(bottom = 0.dp), shape = RoundedCornerShape(18.dp),
-            colors = if (current == null) ButtonDefaults.buttonColors() else ButtonDefaults.filledTonalButtonColors()) {
-            Text(if (current == null) "Continue" else "Not now")
+        if (current != null) {
+            TextButton(onClick = { skipped = skipped + current.id }, modifier = Modifier.fillMaxWidth()) { Text("Skip this step") }
+            TextButton(onClick = a.finishSetup, modifier = Modifier.fillMaxWidth()) { Text("Finish for now") }
+        } else {
+            Button(onClick = a.finishSetup, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(18.dp)) {
+                Text(if (waiting) "Finish for now" else "Continue")
+            }
         }
         Spacer(Modifier.height(16.dp))
     }
 }
 
 @Composable
-private fun StepCard(st: Step, isCurrent: Boolean) {
+private fun StepCard(st: Step, onClick: () -> Unit) {
     val cs = MaterialTheme.colorScheme
-    // Done steps collapse to a ✓ row; the current one gets the button; later ones wait, dimmed.
-    if (st.done) {
-        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.CheckCircle, "Done", Modifier.size(22.dp), tint = cs.primary)
-            Spacer(Modifier.width(14.dp))
-            Text(st.title, style = MaterialTheme.typography.titleMedium, color = cs.onSurfaceVariant)
-        }
-        return
-    }
-    val container by animateColorAsState(if (isCurrent) cs.primaryContainer else cs.surfaceContainerLow, label = "c")
-    Card(colors = CardDefaults.cardColors(containerColor = container), shape = RoundedCornerShape(24.dp), modifier = Modifier.fillMaxWidth().animateContentSize().alpha(if (isCurrent) 1f else 0.7f)) {
-        Column(Modifier.padding(start = 18.dp, top = 14.dp, bottom = 14.dp, end = if (st.info != null) 6.dp else 18.dp)) {
+    Card(colors = CardDefaults.cardColors(containerColor = cs.primaryContainer), shape = RoundedCornerShape(24.dp), modifier = Modifier.fillMaxWidth().animateContentSize()) {
+        Column(Modifier.padding(18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(st.icon, null, tint = if (isCurrent) cs.onPrimaryContainer else cs.primary)
+                Icon(st.icon, null, tint = cs.onPrimaryContainer)
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
                     Text(st.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Text(st.why, style = MaterialTheme.typography.bodyMedium, color = if (isCurrent) cs.onPrimaryContainer else cs.onSurfaceVariant)
+                    Text(st.why, style = MaterialTheme.typography.bodyMedium, color = cs.onPrimaryContainer)
                 }
                 if (st.info != null) InfoButton(st.info)
             }
-            if (isCurrent || st.optional) {
-                Spacer(Modifier.height(12.dp))
-                Box(Modifier.padding(end = if (st.info != null) 12.dp else 0.dp)) {
-                    if (st.optional) OutlinedButton(onClick = st.action, shape = RoundedCornerShape(16.dp)) { Text(st.button) }
-                    else Button(onClick = st.action, shape = RoundedCornerShape(16.dp)) { Text(st.button) }
-                }
-            }
+            Spacer(Modifier.height(12.dp))
+            Button(onClick = onClick, shape = RoundedCornerShape(16.dp)) { Text(st.button) }
         }
     }
 }

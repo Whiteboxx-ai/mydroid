@@ -52,10 +52,12 @@ final class FakeAdb: AdbControlling, @unchecked Sendable {
     var commands: [String] = []
     var helpers: [FakeHelper] = []
     var connected: Set<String> = []
+    var devices: [AdbParsing.Device] = []
     var killed = false
 
     func ensureServer() async -> Bool { commands.append("start-server"); return true }
     func mdnsServices() async -> [AdbMdnsService] { services }
+    func onlineDevices() async -> [AdbParsing.Device] { devices }
     func pair(endpoint: String, password: String) async -> AdbResult {
         commands.append("pair \(endpoint)")
         return AdbResult(status: 0, out: pairOutput, err: "")
@@ -110,6 +112,7 @@ final class FakeEngine: AudioEngineControlling {
 final class CallAudioControllerTests: XCTestCase {
     final class Env {
         var linkUp = true
+        var wirelessDebugging: Bool? = nil
         var verifies: [String] = []
         var phoneSetting: [Bool] = []
         var flashes: [String] = []
@@ -117,15 +120,16 @@ final class CallAudioControllerTests: XCTestCase {
         var answered: Set<String> = []
     }
 
-    private func make(adb: FakeAdb = FakeAdb(), env: Env = Env(), defaults: UserDefaults? = nil)
+    private func make(adb: FakeAdb = FakeAdb(), developerAdb: FakeAdb? = nil, env: Env = Env(), defaults: UserDefaults? = nil)
         -> (CallAudioController, FakeAdb, FakeEngine, Env, UserDefaults) {
         let d = defaults ?? UserDefaults(suiteName: "mydroid.test.\(UUID().uuidString)")!
         let engine = FakeEngine()
-        let c = CallAudioController(adb: adb, engine: engine, defaults: d, timing: .fast)
+        let c = CallAudioController(adb: adb, developerAdb: developerAdb, engine: engine, defaults: d, timing: .fast)
         c.hooks = CallAudioHooks(
             linkConnected: { env.linkUp }, phoneName: { "Pixel 9" }, phoneHost: { "127.0.0.1" },
+            wirelessDebugging: { env.wirelessDebugging },
             openDevOptions: { env.devOptionsOpened += 1 },
-            sendVerify: { n in env.verifies.append(n); adb.verifyReply = { n } },
+            sendVerify: { n in env.verifies.append(n); adb.verifyReply = { n }; developerAdb?.verifyReply = { n } },
             setPhoneSetting: { env.phoneSetting.append($0) },
             answeredOnMac: { env.answered.contains($0) },
             flash: { env.flashes.append($0) })
@@ -151,7 +155,7 @@ final class CallAudioControllerTests: XCTestCase {
         let (c, adb, e, env, _) = make()
         adb.autoTier = tier
         connectService(adb)
-        c.update { $0.enabled = true; $0.tier = tier; $0.lastHost = "127.0.0.1" }
+        c.update { $0.enabled = true; $0.keepAliveGranted = true; $0.tier = tier; $0.lastHost = "127.0.0.1" }
         c.start()
         await until("helper up") { c.helperRunning }
         return (c, adb, e, env)
@@ -163,7 +167,8 @@ final class CallAudioControllerTests: XCTestCase {
         let (c, adb, _, env, _) = make()
         c.beginSetup()
         let p = c.setup!
-        await until("dev options opened") { env.devOptionsOpened == 1 }
+        await until("QR shown") { p.stage == .devOptions }
+        XCTAssertEqual(env.devOptionsOpened, 0, "unknown status must not open phone settings")
 
         XCTAssertEqual(p.stage, .devOptions)
         XCTAssertTrue(p.showsCode)
@@ -179,19 +184,23 @@ final class CallAudioControllerTests: XCTestCase {
 
     func testSetupAdvancesByItselfToTheTierResult() async {
         let (c, adb, _, env, _) = make()
+        env.wirelessDebugging = false
+        adb.connectOutput = "failed to connect"
         c.beginSetup()
         let p = c.setup!
-        var seen: [SetupStage] = [p.stage]
+        var seen: [SetupStage] = []
         func note() { if seen.last != p.stage { seen.append(p.stage) } }
+        await until("dev options opened") { env.devOptionsOpened == 1 }
         XCTAssertEqual(p.stage, .devOptions)
         XCTAssertEqual(p.items.map(\.status), [.active, .pending, .pending, .pending])
-        await until("dev options opened") { env.devOptionsOpened == 1 }
+        note()
 
         connectService(adb)                                                  // Wireless debugging is on
         await until("step 2") { note(); return p.stage == .wirelessDebugging }
         XCTAssertEqual(p.items.map(\.status), [.done, .active, .pending, .pending])
         XCTAssertTrue(p.showsCode)
 
+        adb.connectOutput = "connected to 127.0.0.1:41235"
         scan(adb, p)                                                         // the phone scanned our code
         await until("result") { note(); return p.isFinished }
         XCTAssertEqual(seen, [.devOptions, .wirelessDebugging, .pairing, .checking, .result(.full)])
@@ -217,6 +226,31 @@ final class CallAudioControllerTests: XCTestCase {
         XCTAssertGreaterThan(o?["udpPort"] as? Int ?? 0, 0)
         XCTAssertEqual(Data(base64Encoded: o?["key"] as? String ?? "")?.count, 32)
         c.shutdown()
+    }
+
+    func testExistingWirelessDebuggingConnectionSkipsQRAndLeavesDeveloperAdbAlone() async {
+        let developerAdb = FakeAdb()
+        let serial = "adb-x._adb-tls-connect._tcp"
+        developerAdb.devices = [.init(serial: serial, state: "device")]
+        developerAdb.connected = [serial]
+        let (controller, privateAdb, _, env, _) = make(developerAdb: developerAdb)
+        controller.linkChanged(connected: true)
+        XCTAssertFalse(controller.showsPendingCard)
+        await until("existing connection verified and enabled") { controller.tier == .full }
+        XCTAssertNil(controller.setup)
+        XCTAssertFalse(controller.showsPendingCard)
+        XCTAssertEqual(env.devOptionsOpened, 0)
+        XCTAssertEqual(env.verifies.count, 1)
+        XCTAssertTrue(privateAdb.commands.isEmpty)
+        XCTAssertTrue(developerAdb.commands.contains("helper \(CallAudioAndroidPackage.current.rawValue)"))
+        controller.turnOff()
+        await until("call audio off") { !controller.enabled }
+        controller.linkChanged(connected: true)
+        XCTAssertFalse(controller.checkingExistingConnection)
+        controller.shutdown()
+        XCTAssertEqual(developerAdb.connected, [serial])
+        XCTAssertFalse(developerAdb.killed)
+        XCTAssertFalse(developerAdb.commands.contains { $0.hasPrefix("shell pm ") || $0.hasPrefix("disconnect") })
     }
 
     func testLegacyAppWithTheMatchingNonceOwnsCallAudio() async {

@@ -36,10 +36,11 @@ final class BlePresence: NSObject, CBPeripheralManagerDelegate {
     func restart() {
         manager?.stopAdvertising()
         advertising = false
-        refresh()
+        // CoreBluetooth may still report the previous advertisement while the stop is queued.
+        refresh(restarting: true)
     }
 
-    private func refresh() {
+    private func refresh(restarting: Bool = false) {
         guard let m = manager else { setStatus(.unknown); return }
         switch m.state {
         case .poweredOn: setStatus(.on)
@@ -49,7 +50,7 @@ final class BlePresence: NSObject, CBPeripheralManagerDelegate {
         default: setStatus(.unknown)
         }
         if m.state == .poweredOn, let uuid = desired {
-            if !m.isAdvertising {
+            if restarting || !m.isAdvertising {
                 m.startAdvertising([CBAdvertisementDataServiceUUIDsKey: [uuid]])
             }
             advertising = true

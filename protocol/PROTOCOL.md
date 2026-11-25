@@ -121,7 +121,9 @@ The Mac shows `category:"message"` notifications as conversations in a **Message
 
 #### 5.2 Heartbeat (v1.1, replaces the §1 timings)
 
-The phone sends `ping` every **25s while the screen is on** and every **90s while it is off**. Either side drops the connection after **240s** with no frames received. The phone also enables TCP keepalive.
+The phone sends `ping` every **25s while the screen is on** and every **90s while it is off**. Both sides have a **240s** receive-idle limit. The phone also enables TCP keepalive.
+
+The Mac sends one `ping` after 100s without a valid encrypted message, allowing for the phone’s 90s screen-off heartbeat. It leaves the full receive-idle window for a phone resuming from Doze. The phone checks the session immediately when the screen wakes, Doze ends or Android restores network access. If disconnected, it retries right away. While Android reports that it is blocking network access, the phone waits for access to return before dialing. Bluetooth presence is independent of session liveness.
 
 ### Calls
 
@@ -193,7 +195,7 @@ The Mac advertises a BLE service so the phone knows, at almost no battery cost, 
   - Registers a hardware-filtered, low-power, `PendingIntent`-based `BluetoothLeScanner` scan on the UUID, with `CALLBACK_TYPE_FIRST_MATCH | CALLBACK_TYPE_MATCH_LOST`.
   - **Mac found** → connect over Wi‑Fi now.
   - After five failed LAN attempts, wait a minute between retries while the phone has a LAN connection and isn't parked. Wake the connection supervisor when Android exits Doze so it can retry sooner.
-  - **Mac lost**, and the TCP session is gone for 2 min or more → stop the foreground service and stop every retry until the Mac is found again, a Wi‑Fi network appears, the user unlocks the phone, or the app opens.
+  - **Mac lost**, and the TCP session is gone for 2 min or more → stop the foreground service and stop retries. Resume when the Mac is found again, a Wi-Fi network appears, the screen wakes, the phone unlocks, the app opens, or Doze ends with Wi-Fi or Ethernet available.
 
 ### 7.2 Settings v2 (M→P `settings`, extra fields)
 
@@ -280,11 +282,11 @@ This is an optional feature, never part of the main setup. After setup, the Mac 
 
 ### 8.2 Setup (Mac-driven, one time)
 
-1. The Mac uses an existing `adb` installation.
-2. **Developer options:** the Mac sends `fix.open {what:"devoptions"}`. The phone opens Developer options, or About phone with "Tap Build number 7 times" when they're locked.
-3. **QR pairing:** the Mac shows an ADB pairing QR as soon as setup opens, without waiting for wireless debugging to be discovered. The payload is `WIFI:T:ADB;S:<service>;P:<password>;;`. The user picks **Wireless debugging › Pair device with QR code** and scans it. The Mac finds `_adb-tls-pairing._tcp` with name `<service>`, then runs `adb pair` and `adb connect` (`_adb-tls-connect._tcp`).
+1. The Mac uses an existing `adb` installation. When the phone connects to Mydroid, the Mac looks for an authorized wireless ADB connection, including on an already-running local developer ADB server. It verifies the phone as in step 4 and enables call audio if supported, without displaying setup or requesting a keep-alive grant. An explicit dismissal or turn-off disables automatic enablement. Mydroid leaves the developer server and its connections running when call audio is turned off.
+2. **Developer options:** during manual setup, the Mac sends `fix.open {what:"devoptions"}` automatically only if the phone reports that Wireless debugging is off. The user can also open Developer options from the setup window.
+3. **QR pairing:** if there is no verified connection to reuse, the Mac shows an ADB pairing QR. The payload is `WIFI:T:ADB;S:<service>;P:<password>;;`. The user picks **Wireless debugging › Pair device with QR code** and scans it. The Mac finds `_adb-tls-pairing._tcp` with name `<service>`, then runs `adb pair` and `adb connect` (`_adb-tls-connect._tcp`).
 4. **Verify it's the paired phone:** the Mac sends `adb.verify {nonce}` over the Mydroid link. The phone writes the nonce to `/sdcard/Android/data/<package>/files/adb-verify`, and the Mac reads it with `adb shell cat`. The Mac checks `com.whiteboxxai.mydroid` and the legacy `com.mydroid.android` and uses the package that returns the matching nonce.
-5. **Keep-alive grant:** `adb shell pm grant <package> android.permission.WRITE_SECURE_SETTINGS` targets the verified package. The phone then keeps `Settings.Global "adb_wifi_enabled"=1` on boot and on Wi‑Fi connect, while call audio is enabled. On a network Android hasn't trusted yet, Android may ask once.
+5. **Keep-alive grant:** when using its own ADB server, Mydroid requests `adb shell pm grant <package> android.permission.WRITE_SECURE_SETTINGS` for the verified package. The phone then keeps `Settings.Global "adb_wifi_enabled"=1` on boot and on Wi-Fi connect, while call audio is enabled. On a network Android hasn't trusted yet, Android may ask once.
 6. **Disable:** `adb disconnect`, revoke the grant, and the phone stops the keep-alive. The card explains that Developer options can now be turned off again.
 
 ### 8.3 The helper
@@ -396,7 +398,7 @@ M→P `notif.open {key}`. The phone sends that notification's `contentIntent`.
 | app | default | target |
 |---|---|---|
 | Gmail | web | `https://mail.google.com/mail/u/0/#search/` + `subject:"<subject>"` (the subject is the first line of the text) |
-| WhatsApp | Mac app if installed, else web | `whatsapp://send?phone=<phone>` / `https://web.whatsapp.com/send?phone=<phone>`. With no phone (for example a group), launch the Mac app directly or open the web home. |
+| WhatsApp | Launch the Mac app if installed, else open the web | The web route opens `https://web.whatsapp.com/send?phone=<phone>` when the sender's number is available. With no number (for example a group), open the web home. |
 | Telegram | Mac app if installed, else web | `tg://resolve?phone=<phone>` / `https://web.telegram.org/` |
 | X | web | message → `https://x.com/messages`, otherwise `https://x.com/notifications` |
 | Instagram | web | message → `https://www.instagram.com/direct/inbox/`, otherwise `https://www.instagram.com/` |

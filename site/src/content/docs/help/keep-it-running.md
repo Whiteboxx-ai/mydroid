@@ -9,9 +9,11 @@ Some phones limit what apps can do with the screen off.
 
 If Mydroid says **Background activity restricted**, tap **Fix** to open its App info. Open **Battery** or **Battery usage** and allow background activity.
 
+**None reported** is Android’s reading. OnePlus, OPPO and realme have a separate battery setting. Follow the link to App info in Mydroid’s Settings to check it.
+
 ## If sync stops while the screen is locked
 
-On your phone, open **Mydroid → Settings → Battery optimization**. Tap **Open settings**, find Mydroid in Android’s list and choose **Don’t optimize** if available. Mydroid shows **Exempt** when Android confirms this setting. It can increase battery use.
+On your phone, open **Mydroid → Settings → Battery optimization** and tap **Allow while idle**. If Android opens a list, find Mydroid and choose **Don’t optimize**. Mydroid shows **Exempt** when Android confirms the setting. This can increase battery use.
 
 ## If Mydroid still disconnects
 

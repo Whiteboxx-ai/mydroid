@@ -22,7 +22,7 @@ struct PopoverView: View {
             if dropTargeted { DropOverlay() }
         }
         .frame(width: 372)
-        .fitMenuBarWindow()
+        .fitMenuBarWindow { model.menuBarWindow = $0 }
         .environment(model.ui)
         .overlay(alignment: .bottom) {
             if let t = model.toast {

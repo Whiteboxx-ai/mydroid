@@ -379,8 +379,12 @@ final class AdbSupportTests: XCTestCase {
         XCTAssertTrue(AdbParsing.connectSucceeded("already connected to 192.168.1.23:41235"))
         XCTAssertFalse(AdbParsing.connectSucceeded("failed to connect to '192.168.1.23:41235': Connection refused"))
         XCTAssertFalse(AdbParsing.connectSucceeded("cannot connect to 192.168.1.23:41235: Connection refused (61)"))
-        let d = AdbParsing.devices("List of devices attached\n192.168.1.23:41235\tdevice\nemulator-5554\toffline\n\n")
-        XCTAssertEqual(d, [.init(serial: "192.168.1.23:41235", state: "device"), .init(serial: "emulator-5554", state: "offline")])
+        let d = AdbParsing.devices("List of devices attached\n192.168.1.23:41235\tdevice\nemulator-5554\toffline\nadb-x (2)._adb-tls-connect._tcp\tdevice\n")
+        XCTAssertEqual(d, [
+            .init(serial: "192.168.1.23:41235", state: "device"),
+            .init(serial: "emulator-5554", state: "offline"),
+            .init(serial: "adb-x (2)._adb-tls-connect._tcp", state: "device"),
+        ])
     }
 
     func testQrPayloadAndRandomNames() {

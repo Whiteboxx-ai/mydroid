@@ -46,15 +46,15 @@ internal fun attentionItems(s: UiState, a: Actions, killedAt: Long?, now: Long):
     val r = s.report
     return buildList {
         if (set.notifications && r.state(Feature.Notifications) != FeatureState.On) add(Attention("notif", "Notifications", "Needs notification access", "Allow", a.allowNotificationAccess))
-        if (set.notifications && r.otp != FeatureState.On) add(Attention("otp", "Verification codes", "Codes can't reach your Mac", "Allow", a.allowSms))
+        if (r.supportsTexts && set.notifications && r.otp != FeatureState.On) add(Attention("otp", "Verification codes", "Needs text access", "Allow", a.allowSms))
         if (set.photos && r.state(Feature.Photos) != FeatureState.On) add(Attention("photos", "Photos", "Needs photo access", "Allow", a.allowPhotos))
         else if (set.photos && r.photosPartial) add(Attention("photos", "Photos", "Only some photos are shared", "Allow all", a.allowPhotos))
-        if (set.calls && r.state(Feature.Calls) != FeatureState.On) add(Attention("calls", "Calls", "Needs phone access", "Allow", a.allowCalls))
-        if (set.calls && !r.dial) add(Attention("dial", "Call from your Mac", "Needs permission", "Allow", a.allowDial))
-        if (set.smsHistory && r.state(Feature.Sms) != FeatureState.On) add(Attention("sms", "Messages", "Needs message access", "Allow", a.allowSmsHistory))
+        if (r.supportsCalls && set.calls && r.state(Feature.Calls) != FeatureState.On) add(Attention("calls", "Calls", "Needs phone access", "Allow", a.allowCalls))
+        if (r.supportsCalls && set.calls && !r.dial) add(Attention("dial", "Call from your Mac", "Needs permission", "Allow", a.allowDial))
+        if (r.supportsTexts && set.smsHistory && r.state(Feature.Sms) != FeatureState.On) add(Attention("sms", "Messages", "Needs message access", "Allow", a.allowSmsHistory))
         if (set.walkAway && r.walkAway == com.mydroid.android.walkaway.WalkAwayStatus.NeedsPermission) add(Attention("walkaway", "Walk-away lock", "Needs Nearby devices", "Allow", a.allowWalkAway))
         when {
-            r.backgroundRestricted -> add(Attention("battery", "Stay connected", "Background activity restricted", "Fix", a.openBackgroundSettings))
+            r.backgroundRestricted -> add(Attention("battery", "Stay connected", "Background activity restricted", "Fix", a.openAppInfo))
             killedAt != null -> add(Attention("oem", "Stay connected", "Mydroid stopped in the background ${ago(killedAt, now)}", "Fix", a.openOem))
         }
     }

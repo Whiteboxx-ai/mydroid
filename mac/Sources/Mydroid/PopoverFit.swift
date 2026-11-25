@@ -29,6 +29,7 @@ private struct WindowReader: NSViewRepresentable {
 private final class WindowRef { weak var window: NSWindow? }
 
 struct FitMenuBarWindow: ViewModifier {
+    let onWindow: (NSWindow) -> Void
     @State private var ref = WindowRef()
     @State private var height: CGFloat = 0
 
@@ -37,7 +38,11 @@ struct FitMenuBarWindow: ViewModifier {
             .fixedSize(horizontal: false, vertical: true)
             .background(GeometryReader { g in Color.clear.preference(key: ContentHeightKey.self, value: g.size.height) })
             .background(WindowReader { w in
-                if ref.window !== w { ref.window = w; fit() }
+                if ref.window !== w {
+                    ref.window = w
+                    onWindow(w)
+                    fit()
+                }
             })
             .onPreferenceChange(ContentHeightKey.self) { h in
                 height = h
@@ -58,5 +63,7 @@ struct FitMenuBarWindow: ViewModifier {
 
 extension View {
     /// Keep the menu-bar popover window exactly as tall as its content.
-    func fitMenuBarWindow() -> some View { modifier(FitMenuBarWindow()) }
+    func fitMenuBarWindow(onWindow: @escaping (NSWindow) -> Void) -> some View {
+        modifier(FitMenuBarWindow(onWindow: onWindow))
+    }
 }

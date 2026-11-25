@@ -21,6 +21,6 @@ App chats show what arrived as notifications. Texts come from the phone on reque
 
 An incoming call shows the caller on your Mac. Answer, decline, mute or end it from there. You can also start a call from your Mac.
 
-Call audio stays on your phone by default. To hear calls on your Mac, open **Mydroid → Settings → Calls** and choose **Set Up** under **Hear calls on your Mac**. This uses an existing Android Platform Tools installation on your Mac.
+Call audio uses an existing Android Platform Tools installation on your Mac. If your paired phone already has a wireless debugging connection, Mydroid checks what it supports and enables Call Audio automatically.
 
-On your phone, open **Developer options → Wireless debugging**. Turn it on, then tap **Pair device with QR code** and scan the code on your Mac.
+If setup is needed, open **Mydroid → Settings → Calls** and choose **Set Up**. On your phone, go to **Developer options → Wireless debugging**. Turn it on, tap **Pair device with QR code**, and scan the code on your Mac.

@@ -193,6 +193,8 @@ struct SetupSheet: View {
             Group {
                 if let tier = p.tier {
                     ResultPanel(tier: tier, phoneName: p.phoneName).transition(.opacity.combined(with: .scale(scale: 0.98)))
+                } else if p.stage == .looking || p.reusedConnection {
+                    RightPanel(progress: p).padding(.top, 22)
                 } else {
                     HStack(alignment: .top, spacing: 22) {
                         Checklist(progress: p).frame(width: 318)
@@ -218,9 +220,12 @@ struct SetupSheet: View {
 
     private func subtitle(_ p: SetupProgress) -> String {
         switch p.stage {
+        case .looking: return "Looking for your phone’s ADB connection"
+        case .checking where p.reusedConnection: return "Using your existing connection"
         case .result(.none): return "What your phone supports"
         case .result: return "Your \(p.phoneName) is ready"
         case .failed: return "Setup stopped"
+        case .devOptions, .wirelessDebugging: return "No authorized wireless ADB connection found"
         default: return "Follow the steps on your phone"
         }
     }
@@ -317,7 +322,7 @@ private struct RightPanel: View {
             if progress.showsCode {
                 code
                 if progress.stage == .devOptions || progress.stage == .wirelessDebugging {
-                    Button { model.hub.fix(.devoptions) } label: { Label("Reopen on Phone", systemImage: "arrow.up.forward.app") }
+                    Button { model.hub.fix(.devoptions) } label: { Label("Open Developer Options on Phone", systemImage: "arrow.up.forward.app") }
                         .controlSize(.small).buttonStyle(.bordered)
                 }
                 if progress.stage == .devOptions {
@@ -325,10 +330,12 @@ private struct RightPanel: View {
                         .font(.system(size: 11)).foregroundStyle(.secondary).multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-            } else if progress.stage == .checking {
+            } else if progress.stage == .checking || progress.stage == .looking {
                 VStack(spacing: 12) {
                     ProgressView().controlSize(.large)
-                    Text("Checking\u{2026}").font(.system(size: 13, weight: .medium)).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                    if progress.stage == .checking {
+                        Text("Checking what your phone supports…").font(.system(size: 13, weight: .medium)).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                    }
                 }
                 .frame(width: 220, height: 220)
             } else if let message = progress.failure {
@@ -406,10 +413,9 @@ struct CallSettings: View {
                 }
                 HStack {
                     if c.enabled {
-                        Button("Set Up Again\u{2026}") { model.openCallAudioSetup() }
                         Button("Turn Off\u{2026}", role: .destructive) { confirmOff = true }
-                    } else {
-                        Button("Set Up\u{2026}") { model.openCallAudioSetup() }
+                    } else if !c.checkingExistingConnection, c.prefs.tier != .some(.none) {
+                        Button(c.prefs.cardDismissed ? "Enable Call Audio…" : "Set Up…") { model.openCallAudioSetup() }
                             .buttonStyle(.borderedProminent).disabled(!c.available || model.state.link != .connected)
                         if model.state.link != .connected { Text("Needs your phone").font(.caption).foregroundStyle(.secondary) }
                     }
@@ -480,7 +486,7 @@ struct CallSettings: View {
 
     @ViewBuilder
     private func statusRows(_ c: CallAudioController) -> some View {
-        row("Call audio", c.enabled ? ("On", .green) : ("Off", .gray))
+        row("Call audio", c.checkingExistingConnection ? ("Checking…", .secondary) : c.enabled ? ("On", .green) : ("Off", .gray))
         if c.enabled || c.prefs.tier != nil {
             LabeledContent("Your phone supports") {
                 Text(c.prefs.tier.map(TierCopy.title) ?? "Checking\u{2026}").foregroundStyle(.secondary)
@@ -496,7 +502,7 @@ struct CallSettings: View {
             }
             if !c.prefs.keepAliveGranted {
                 Label("Wireless debugging may switch itself off", systemImage: "exclamationmark.triangle").font(.callout).foregroundStyle(.orange)
-                    .help("Android didn\u{2019}t allow the keep-alive. Set up again if calls stop appearing here.")
+                    .help("If the connection drops, check that Wireless debugging is still on.")
             }
         }
     }

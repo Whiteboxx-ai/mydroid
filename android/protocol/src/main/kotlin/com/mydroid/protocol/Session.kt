@@ -36,7 +36,7 @@ class ClientSession(
     private val identity: DeviceIdentity,
     val pairing: Boolean,
     private val listener: SessionListener,
-    /** Current ping interval; re-read after every ping and on [heartbeatChanged]. */
+    /** Current ping interval; re-read after every ping. */
     private val heartbeatMs: () -> Long = { Heartbeat.SCREEN_ON_MS },
 ) : Closeable {
     @Volatile
@@ -48,32 +48,35 @@ class ClientSession(
     private val closedOnce = AtomicBoolean(false)
     private var heartbeat: ScheduledExecutorService? = null
     private var nextPing: java.util.concurrent.ScheduledFuture<*>? = null
+    private var pingGeneration = 0
 
     @Synchronized
-    private fun scheduleNext() {
+    private fun scheduleNext(delayMs: Long = heartbeatMs()) {
         val ex = heartbeat ?: return
         if (state == SessionState.CLOSED || ex.isShutdown) return
         nextPing?.cancel(false)
+        val generation = ++pingGeneration
         nextPing = ex.schedule({
+            synchronized(this) {
+                if (generation != pingGeneration || state == SessionState.CLOSED) return@schedule
+            }
             try {
                 channel.send(Message.of("ping"))
-                scheduleNext()
+                synchronized(this) {
+                    if (generation == pingGeneration) scheduleNext()
+                }
             } catch (e: IOException) {
                 channel.close()
             }
-        }, heartbeatMs(), TimeUnit.MILLISECONDS)
+        }, delayMs, TimeUnit.MILLISECONDS)
     }
 
-    /** The interval changed (screen on/off). Restarts the timer; [pingNow] also checks liveness right away. */
-    fun heartbeatChanged(pingNow: Boolean = false) {
-        if (pingNow && state != SessionState.CLOSED) {
-            try {
-                channel.send(Message.of("ping"))
-            } catch (e: IOException) {
-                channel.close()
-                return
-            }
-        }
+    /** Queue an immediate check after Android resumes network access. Never writes on the calling thread. */
+    fun checkLiveness() = scheduleNext(delayMs = 0)
+
+    @Synchronized
+    private fun startHeartbeat() {
+        heartbeat = Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "mydroid-heartbeat").apply { isDaemon = true } }
         scheduleNext()
     }
 
@@ -89,8 +92,7 @@ class ClientSession(
                     if (identity.androidSdk > 0) put("android", identity.androidSdk)
                 },
             )
-            heartbeat = Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "mydroid-heartbeat").apply { isDaemon = true } }
-            scheduleNext()
+            startHeartbeat()
             loop@ while (true) {
                 val m = channel.receive()
                 when (m.type) {
@@ -138,8 +140,10 @@ class ClientSession(
     }
 
     private fun shutdown(reason: String?) {
-        state = SessionState.CLOSED
-        heartbeat?.shutdownNow()
+        synchronized(this) {
+            state = SessionState.CLOSED
+            heartbeat?.shutdownNow()
+        }
         channel.close()
         if (closedOnce.compareAndSet(false, true)) listener.onClosed(reason)
     }

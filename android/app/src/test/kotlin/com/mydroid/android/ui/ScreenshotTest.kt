@@ -11,6 +11,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.mydroid.android.Feature
@@ -43,6 +45,7 @@ import org.robolectric.ParameterizedRobolectricTestRunner.Parameters
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import org.robolectric.shadows.ShadowBuild
 import java.io.File
 
 /** JVM screenshots of the real screens with fake state. Output: `render.dir` (see app/build.gradle.kts). */
@@ -338,6 +341,33 @@ class ScreenshotTest(private val dark: Boolean) {
     @Test fun permissionsLargeFont() = both("permissions-fontscale1.3", heightDp = 1300, fontScale = 1.3f) {
         val r = allOn.copy(states = allOn.states + (Feature.Photos to FeatureState.NeedsPermission), backgroundRestricted = true, presence = PresenceStatus.NeedsPermission, codesFromApps = false)
         PermissionsScreen(connected(r).copy(setupDone = false), Actions())
+    }
+
+    @Test fun setupSkipsUnsupportedPhoneFeaturesAndLetsUsersSkipIndividualSteps() {
+        val report = FeatureReport(
+            states = Feature.entries.associateWith { FeatureState.NeedsPermission },
+            supportsCalls = false,
+            supportsTexts = false,
+        )
+        rule.setContent {
+            MydroidTheme { PermissionsScreen(connected(report).copy(setupDone = false), Actions()) }
+        }
+        rule.onNodeWithText("Open notification access").assertExists()
+        rule.onNodeWithText("Open app info").assertDoesNotExist()
+        rule.onNodeWithText("Skip this step").performClick()
+        rule.onNodeWithText("Camera roll").assertExists()
+        rule.onNodeWithText("Skip this step").performClick()
+        rule.onNodeWithText("All set").assertExists()
+        rule.onNodeWithText("Continue").assertExists()
+    }
+
+    @Test fun onePlusIdleSetupIsOptionalWhenAndroidReportsNoRestriction() {
+        ShadowBuild.setManufacturer("OnePlus")
+        val state = connected().copy(settings = Settings(), setupDone = false)
+        rule.setContent { MydroidTheme { PermissionsScreen(state, Actions()) } }
+        rule.onNodeWithText("Allow while idle").assertExists()
+        rule.onNodeWithText("Skip this step").performClick()
+        rule.onNodeWithText("All set").assertExists()
     }
 
     // ---------------------------------------------------------------- Pairing

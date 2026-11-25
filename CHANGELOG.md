@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.5 · 25 November 2026
+
+### Android
+
+- Mydroid checks the connection as soon as Android restores network access. If the phone has disconnected, Mydroid tries to reconnect.
+- Check Android’s battery exemption separately from your phone’s background settings. Setup offers an optional **Allow while idle** step on OnePlus, OPPO, and realme. [Keep Mydroid connected](https://mydroid.whiteboxx.ai/help/keep-it-running/)
+- Setup asks for call and text permissions only on devices that support those features. If you need to grant a permission in Android Settings, Mydroid can take you to App info.
+
+### Mac
+
+- Your Mac starts advertising over Bluetooth again after it wakes, so nearby phones can find it.
+- Call Audio can reuse an existing wireless debugging connection after Mydroid verifies it belongs to your paired phone. [Set up Call Audio](https://mydroid.whiteboxx.ai/features/messages-and-calls/)
+- The menu bar panel closes when you open the main window or Call Audio setup.
+- WhatsApp notifications open the Mac app directly when it’s installed. If you use WhatsApp Web, Mydroid still opens the chat when it has the sender’s number.
+
 ## 0.1.4
 
 - The Mac keeps the same Wi-Fi port when it wakes, so your phone can reconnect using the address it already knows.

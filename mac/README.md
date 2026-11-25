@@ -168,9 +168,9 @@ notification's tap would go, so the Mac picks from what it can see.
   steps (condition, then target), first match wins. URLs are templates (`{phone}`, `{id}`, `{q}`, `{host}`), and every filled-in value is percent-encoded.
   To support another app, add a rule. The result is an `OpenAction`: `.web(URL)`, `.macApp(bundleID:url:fallback:)`, `.phone(key:)` or `.none`.
   "Message" means `category == "message"` or a conversation. Rules, in short (see section 13.3 for the full table):
-  Gmail searches `subject:"<first line of text, else title>"`; WhatsApp and Telegram use the Mac app when `net.whatsapp.WhatsApp` / `ru.keepcoder.Telegram` /
-  `org.telegram.desktop` is installed (`NSWorkspace.urlForApplication(withBundleIdentifier:)`, behind the `AppLocator` protocol) and the web
-  otherwise, with the chat when the sender's phone number is known (never for a group); Spotify opens `spotify:track:<id>` in `com.spotify.client` or on open.spotify.com, and
+  Gmail searches `subject:"<first line of text, else title>"`. For WhatsApp and Telegram routing, see section 13.3.
+  Installed Mac apps are detected with `NSWorkspace.urlForApplication(withBundleIdentifier:)` behind `AppLocator`.
+  Spotify opens `spotify:track:<id>` in `com.spotify.client` or on open.spotify.com, and
   anything else on the phone; YouTube searches for the channel plus the video title, pulled apart from phrasings such as "MKBHD uploaded: ..." and falling back to
   the whole text. **A notification with `links` opens its first link, ahead of the app's rule.** Everything without a rule opens on the phone. Zomato has no verified orders URL, so it opens zomato.com.
 - **Per app.** Settings > Notifications > Apps: each known app has **When clicked**: Default (the line beside it says what that does, for example "Opens x.com/notifications"),
@@ -187,7 +187,7 @@ notification's tap would go, so the Mac picks from what it can see.
 
 Optional, never part of the main setup. After setup the popover shows a **Hear calls on your Mac** card with **Set up** and
 **Not now** (Not now hides it for good; Settings > Calls always has it). Setup is one guided window with a live checklist that
-ticks off by itself:
+ticks off by itself. If an existing wireless ADB connection verifies against the paired phone, setup skips to checking audio support.
 
 1. **Developer options.** The Mac sends `fix.open {what:"devoptions"}`; the phone opens the right screen. The step completes when
    the phone starts advertising wireless debugging.

@@ -15,6 +15,13 @@ final class AdbClientTests: XCTestCase {
         let r = await adb.run(["devices"], timeout: 10)
         XCTAssertTrue(r.ok, r.text)
         XCTAssertTrue(r.out.hasPrefix("List of devices attached"))
+        let existing = AdbClient(executable: exe, port: 5197, home: home.appendingPathComponent("unused"), existingServer: true)
+        let reused = await existing.run(["devices"], timeout: 3)
+        XCTAssertTrue(reused.ok, reused.text)
+        existing.killServer()
+        let stillRunning = await adb.run(["devices"], timeout: 3)
+        XCTAssertTrue(stillRunning.ok, stillRunning.text)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: home.appendingPathComponent("unused/.android/adbkey").path))
         // Its key lives under its own HOME, not the developer's ~/.android.
         XCTAssertTrue(FileManager.default.fileExists(atPath: home.appendingPathComponent(".android/adbkey").path))
         // Discovery works (the list may well be empty; only the shape is checked).

@@ -65,6 +65,23 @@ object Oem {
     val brandName: String
         get() = Build.MANUFACTURER.replaceFirstChar { it.uppercase() }
 
+    /** These phones have separate app battery controls that Android's restriction API does not report. */
+    val hasSeparateBackgroundControls: Boolean
+        get() = Build.MANUFACTURER.lowercase() in setOf("oneplus", "oppo", "realme")
+
+    /** Manufacturer settings vary by model. */
+    val backgroundHelp: String
+        get() = when (Build.MANUFACTURER.lowercase()) {
+            "oneplus", "oppo", "realme" -> "In Battery usage, look for Allow background activity."
+            "google" -> "In App battery usage, turn on Allow background usage."
+            "samsung" -> "Allow background activity. If Mydroid is listed under Sleeping apps, remove it there too."
+            "xiaomi", "redmi", "poco" -> "In App battery saver, look for No restrictions."
+            "vivo", "iqoo" -> "In Battery settings, look for Background power consumption management."
+            "huawei", "honor" -> "In App launch, look for Manage manually and turn on Run in background."
+            "motorola" -> "In Battery settings, look for Background app use and Always allow."
+            else -> "Open Battery or Battery usage and allow background activity."
+        }
+
     fun appDetails(c: Context): Intent =
         Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", c.packageName, null))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
